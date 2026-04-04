@@ -8,21 +8,26 @@ app.use(cors());
 app.use(express.json());
 
 
-app.post("/evaluate",async (req,res)=>{
-    const { question,answer}=req.body;
+app.post("/evaluate", async (req, res) => {
+  const { question, answer } = req.body;
 
-    try{
-        const response=await axios.post("http://localhost:5000/evaluate",{
-            question,answer,
-        });
-        res.json(response.data);
+  try {
+    const response = await axios.post("http://localhost:8001/evaluate", {
+      question,
+      answer,
+    });
 
-    }
-    catch(error){
-        res.json(500).json({error:"ml service error"});
+    // ✅ ONLY ONE RESPONSE
+    return res.json(response.data);
 
-    }
+  } catch (error) {
+    console.error(error.message);
+
+    // ✅ RETURN prevents double send
+    return res.status(500).json({
+      error: "ML service error",
+    });
+  }
 });
-
 
 app.listen(3001,()=>console.log("Backend running port 3001"));
