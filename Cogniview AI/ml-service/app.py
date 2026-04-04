@@ -10,9 +10,10 @@ class InterviewRequest(BaseModel):
     answer: str
 
 ideal_answer = {
-    "What is overfitting?": "Overfitting is when a model performs well on training data but poorly on unseen data due to memorizing noise."   
+    "What is overfitting?": "Overfitting is when a model performs well on training data but poorly on unseen data.",
+    "What is underfitting?": "Underfitting is when a model fails to capture patterns in the data and performs poorly on both training and test data.",
+    "Explain bias vs variance": "Bias is error due to overly simple models, while variance is error due to overly complex models sensitive to data variations."
 }
-
 @app.post("/evaluate")
 def evaluate(data: InterviewRequest):
     question = data.question
