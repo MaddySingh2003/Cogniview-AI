@@ -1,111 +1,13 @@
-// const express =require("express");
-// const cors=require("cors");
-// const axios=require("axios");
-// const sessions={};
+const connectDB = require("./config/db");
+const Session=require("./models/Session")
 
-// const app =express();
-
-
-// app.use(cors());
-// app.use(express.json());
-
-
-// app.post("/evaluate", async (req, res) => {
-//   const { question, answer } = req.body;
-
-//   try {
-//     const response = await axios.post("http://localhost:8001/evaluate", {
-//       question,
-//       answer,
-//     });
-
-//     // ✅ ONLY ONE RESPONSE
-//     return res.json(response.data);
-
-//   } catch (error) {
-//     console.error(error.message);
-
-//     // ✅ RETURN prevents double send
-//     return res.status(500).json({
-//       error: "ML service error",
-//     });
-//   }
-// });
-
-
-// app.post("/start", (req, res) => {
-//   const sessionId = Date.now().toString(); // ✅ FIXED
-
-//   const questions = [
-//     "What is overfitting?",
-//     "What is underfitting?",
-//     "Explain bias vs variance"
-//   ];
-
-//   sessions[sessionId] = {
-//     questions,
-//     answers: []
-//   };
-
-//   res.json({
-//     sessionId,
-//     questions
-//   });
-// });
-
-// app.post("/answer", async (req, res) => {
-//   const { sessionId, question, answer } = req.body;
-
-//   if (!sessions[sessionId]) {
-//     return res.status(400).json({ error: "Invalid session" });
-//   }
-
-//   try {
-//     const response = await axios.post("http://localhost:5000/evaluate", {
-//       question,
-//       answer
-//     });
-
-//     const result = response.data;
-
-//     sessions[sessionId].answers.push({
-//       question,
-//       answer,
-//       score: result.score,
-//       feedback: result.feedback
-//     });
-
-//     res.json(result);
-
-//   } catch (error) {
-//     console.error(error.message);
-//     res.status(500).json({ error: "Evaluation failed" });
-//   }
-// });
-
-// app.get("/result/:sessionId", (req, res) => {
-//     const { sessionId } = req.params;
-
-//   const session = sessions[sessionId];
-
-//   if (!session) {
-//     return res.status(404).json({ error: "Session not found" });
-//   }
-//   const scores = session.answers.map(a => a.score);
-//   const avg =
-//   score.length>0
-//    ? scores.reduce((a, b) => a + b, 0) / scores.length
-//    :0;
-
-//   res.json({
-//     averageScore: avg.toFixed(2),
-//     totalQuestions: session.questions.length,
-//     answers: session.answers
-//   });
-// })
-
-
-// app.listen(3001,()=>console.log("Backend running port 3001"));
+const { v4: uuidv4 } = require("uuid");
+const questionBank = [
+  "What is overfitting?",
+  "What is underfitting?",
+  "Explain bias vs variance"
+];
+connectDB();
 const express = require("express");
 const cors = require("cors");
 const axios = require("axios");
@@ -117,71 +19,124 @@ app.use(express.json());
 const sessions = {};
 
 // ✅ START
-app.post("/start", (req, res) => {
-  const sessionId = Date.now().toString();
+app.post("/start", async (req, res) => {
+  const sessionId = uuidv4();
 
-  const questions = [
-    "What is overfitting?",
-    "What is underfitting?",
-    "Explain bias vs variance"
-  ];
-
-  sessions[sessionId] = {
-    questions,
+  const newSession = new Session({
+    sessionId,
+    questions: questionBank,
     answers: []
-  };
+  });
 
-  res.json({ sessionId, questions });
+  await newSession.save();
+
+  res.json({
+    sessionId,
+    questions: questionBank
+  });
 });
 
 // ✅ ANSWER
 app.post("/answer", async (req, res) => {
   const { sessionId, question, answer } = req.body;
 
-  if (!sessions[sessionId]) {
+  const session = await Session.findOne({ sessionId });
+
+  if (!session) {
     return res.status(400).json({ error: "Invalid session" });
   }
 
   try {
-    const response = await axios.post("http://localhost:8001/evaluate", {
+    const mlRes = await axios.post("http://localhost:8001/evaluate", {
       question,
       answer
     });
 
-    const result = response.data;
+    const result = mlRes.data;
 
-    sessions[sessionId].answers.push({
+    session.answers.push({
       question,
       answer,
       score: result.score,
       feedback: result.feedback
     });
 
+    await session.save();
+
     res.json(result);
 
-  } catch (error) {
-    console.error(error.message);
-    res.status(500).json({ error: "Evaluation failed" });
+  } catch (err) {
+    res.status(500).json({ error: "ML service error" });
   }
 });
 
 // ✅ RESULT
-app.get("/result/:sessionId", (req, res) => {
+app.get("/result/:sessionId", async (req, res) => {
   const { sessionId } = req.params;
 
-  const session = sessions[sessionId];
+  const session = await Session.findOne({ sessionId });
 
   if (!session) {
-    return res.status(404).json({ error: "Session not found" });
+    return res.status(400).json({ error: "Session not found" });
   }
 
   const scores = session.answers.map(a => a.score);
-  const avg = scores.reduce((a, b) => a + b, 0) / (scores.length || 1);
+  const avg =
+    scores.reduce((a, b) => a + b, 0) / (scores.length || 1);
 
   res.json({
     averageScore: Number(avg.toFixed(2)),
     totalQuestions: session.questions.length,
     answers: session.answers
+  });
+});
+
+
+app.get("/analytics/:sessionId", async (req, res) => {
+  const { sessionId } = req.params;
+
+  const session = await Session.findOne({ sessionId });
+
+  if (!session) {
+    return res.status(400).json({ error: "Session not found" });
+  }
+
+  const answers = session.answers;
+
+  // 🔹 Topic tagging (basic logic)
+  const topicScores = {};
+
+  answers.forEach(a => {
+    let topic = "General";
+
+    if (a.question.toLowerCase().includes("overfitting")) topic = "ML Basics";
+    else if (a.question.toLowerCase().includes("underfitting")) topic = "ML Basics";
+    else if (a.question.toLowerCase().includes("bias")) topic = "Statistics";
+
+    if (!topicScores[topic]) topicScores[topic] = [];
+
+    topicScores[topic].push(a.score);
+  });
+
+  // 🔹 Average per topic
+  const topicPerformance = {};
+
+  for (let topic in topicScores) {
+    const scores = topicScores[topic];
+    const avg =
+      scores.reduce((a, b) => a + b, 0) / scores.length;
+
+    topicPerformance[topic] = Number(avg.toFixed(2));
+  }
+
+  // 🔹 Weak areas
+  const weakAreas = Object.entries(topicPerformance)
+    .filter(([_, score]) => score < 5)
+    .map(([topic]) => topic);
+
+  res.json({
+    topicPerformance,
+    weakAreas
   });
 });
 

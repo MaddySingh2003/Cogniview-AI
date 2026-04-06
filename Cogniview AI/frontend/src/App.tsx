@@ -6,195 +6,210 @@ type AnswerResult = {
   feedback: string;
 };
 
+type FinalAnswer = {
+  question: string;
+  answer: string;
+  score: number;
+  feedback: string;
+};
+
 type FinalResult = {
   averageScore: number;
   totalQuestions: number;
-  answers: {
-    question: string;
-    answer: string;
-    score: number;
-    feedback: string;
-  }[];
+  answers: FinalAnswer[];
+};
+
+type Analytics = {
+  topicPerformance: Record<string, number>;
+  weakAreas: string[];
 };
 
 function App() {
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [questions, setQuestions] = useState<string[]>([]);
-  const [currentIndex, setCurrentIndex] = useState(0);
-  const [answer, setAnswer] = useState("");
+  const [currentIndex, setCurrentIndex] = useState<number>(0);
+  const [answer, setAnswer] = useState<string>("");
+
   const [result, setResult] = useState<AnswerResult | null>(null);
   const [finalResult, setFinalResult] = useState<FinalResult | null>(null);
-  const [loading, setLoading] = useState(false);
+  const [analytics, setAnalytics] = useState<Analytics | null>(null);
 
-  // 🚀 Start Interview
+  const BACKEND_URL = "http://localhost:3001";
+
   const startInterview = async () => {
-    try {
-      setLoading(true);
-
-      const res = await axios.post("http://localhost:3001/start");
-
-      setSessionId(res.data.sessionId);
-      setQuestions(res.data.questions);
-      setCurrentIndex(0);
-      setFinalResult(null);
-      setResult(null);
-      setAnswer("");
-
-    } catch (error) {
-      console.error(error);
-      alert("Failed to start interview");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // 🚀 Submit Answer
-  const submitAnswer = async () => {
-    if (!sessionId || !answer.trim()) {
-      alert("Please enter an answer");
-      return;
-    }
-
-    try {
-      setLoading(true);
-
-      const question = questions[currentIndex];
-
-      const res = await axios.post("http://localhost:3001/answer", {
-        sessionId,
-        question,
-        answer
-      });
-
-      setResult(res.data);
-
-      const nextIndex = currentIndex + 1;
-
-      if (nextIndex < questions.length) {
-        setTimeout(() => {
-          setCurrentIndex(nextIndex);
-          setAnswer("");
-          setResult(null);
-        }, 1000); // slight delay for UX
-      } else {
-        const finalRes = await axios.get(
-          `http://localhost:3001/result/${sessionId}`
-        );
-
-        setFinalResult(finalRes.data);
-      }
-
-    } catch (error) {
-      console.error(error);
-      alert("Submission failed");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // 🔄 Restart
-  const restart = () => {
-    setSessionId(null);
-    setQuestions([]);
+    const res = await axios.post(`${BACKEND_URL}/start`);
+    setSessionId(res.data.sessionId);
+    setQuestions(res.data.questions);
     setCurrentIndex(0);
-    setAnswer("");
-    setResult(null);
     setFinalResult(null);
+    setAnalytics(null);
+    setResult(null);
   };
+
+  const submitAnswer = async () => {
+    if (!sessionId) return;
+
+    const question = questions[currentIndex];
+
+    const res = await axios.post(`${BACKEND_URL}/answer`, {
+      sessionId,
+      question,
+      answer,
+    });
+
+    setResult(res.data);
+
+    const nextIndex = currentIndex + 1;
+
+    if (nextIndex < questions.length) {
+      setTimeout(() => {
+        setCurrentIndex(nextIndex);
+        setAnswer("");
+        setResult(null);
+      }, 1200);
+    } else {
+      const finalRes = await axios.get(`${BACKEND_URL}/result/${sessionId}`);
+      setFinalResult(finalRes.data);
+
+      const analyticsRes = await axios.get(
+        `${BACKEND_URL}/analytics/${sessionId}`
+      );
+      setAnalytics(analyticsRes.data);
+    }
+  };
+
+  const progress = questions.length
+    ? ((currentIndex + 1) / questions.length) * 100
+    : 0;
 
   // 🟢 START SCREEN
   if (!sessionId) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-100">
-        <div className="bg-white p-8 rounded-xl shadow-md text-center w-[400px]">
-          <h1 className="text-2xl font-bold mb-4">
-            AI Mock Interview
-          </h1>
-
+      <div className="h-screen flex items-center justify-center bg-gray-100">
+        <div className="bg-white p-10 rounded-2xl shadow-xl text-center">
+          <h1 className="text-3xl font-bold mb-4">🎤 AI Mock Interview</h1>
+          <p className="text-gray-500 mb-6">
+            Practice with real-time feedback & analytics
+          </p>
           <button
             onClick={startInterview}
-            disabled={loading}
-            className="bg-blue-500 hover:bg-blue-600 text-white px-6 py-2 rounded"
+            className="px-6 py-3 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition"
           >
-            {loading ? "Starting..." : "Start Interview"}
+            Start Interview
           </button>
         </div>
       </div>
     );
   }
 
-  // 🟢 FINAL RESULT SCREEN
+  // 🟣 FINAL RESULT SCREEN
   if (finalResult) {
     return (
-      <div className="min-h-screen bg-gray-100 flex items-center justify-center">
-        <div className="bg-white p-6 rounded-xl shadow-md w-[600px]">
+      <div className="min-h-screen bg-gray-100 p-8">
+        <div className="max-w-4xl mx-auto bg-white p-8 rounded-2xl shadow">
+          <h1 className="text-3xl font-bold mb-4">📊 Final Report</h1>
 
-          <h2 className="text-xl font-bold mb-4">
-            Final Result
-          </h2>
-
-          <p className="mb-4 text-lg">
-            Average Score:{" "}
-            <span className="font-bold">
-              {finalResult.averageScore}
-            </span>
-          </p>
+          <div className="mb-6">
+            <h2 className="text-xl font-semibold">
+              Average Score:{" "}
+              <span className="text-blue-600">
+                {finalResult.averageScore}
+              </span>
+            </h2>
+          </div>
 
           {finalResult.answers.map((a, i) => (
-            <div key={i} className="mb-4 border-b pb-2">
-              <p className="font-semibold">{a.question}</p>
-              <p className="text-sm">Score: {a.score}</p>
-              <p className="text-gray-600">{a.feedback}</p>
+            <div
+              key={i}
+              className="border rounded-xl p-4 mb-4 bg-gray-50"
+            >
+              <p className="font-semibold">Q: {a.question}</p>
+              <p className="text-gray-600 mt-1">
+                Your Answer: {a.answer}
+              </p>
+              <p className="mt-2 text-sm">Score: {a.score}</p>
+              <p className="text-sm text-gray-500">{a.feedback}</p>
             </div>
           ))}
 
-          <button
-            onClick={restart}
-            className="mt-4 bg-blue-500 text-white px-4 py-2 rounded"
-          >
-            Restart
-          </button>
+          {analytics && (
+            <div className="mt-8">
+              <h2 className="text-xl font-bold mb-3">📈 Analytics</h2>
 
+              <div className="mb-4">
+                <h3 className="font-semibold">Topic Performance</h3>
+                {Object.entries(analytics.topicPerformance).map(
+                  ([topic, score]) => (
+                    <div key={topic} className="flex justify-between">
+                      <span>{topic}</span>
+                      <span>{score}</span>
+                    </div>
+                  )
+                )}
+              </div>
+
+              <div>
+                <h3 className="font-semibold">Weak Areas</h3>
+                {analytics.weakAreas.length === 0 ? (
+                  <p className="text-green-600">None 🎉</p>
+                ) : (
+                  analytics.weakAreas.map((w, i) => (
+                    <p key={i} className="text-red-500">
+                      {w}
+                    </p>
+                  ))
+                )}
+              </div>
+            </div>
+          )}
         </div>
       </div>
     );
   }
 
-  // 🟢 INTERVIEW SCREEN
+  // 🔵 INTERVIEW SCREEN
   return (
-    <div className="min-h-screen bg-gray-100 flex items-center justify-center">
-      <div className="bg-white p-6 rounded-xl shadow-md w-[600px]">
+    <div className="min-h-screen bg-gray-100 flex justify-center items-center p-6">
+      <div className="bg-white w-full max-w-2xl p-6 rounded-2xl shadow">
 
-        <div className="mb-3 text-sm text-gray-500">
-          Question {currentIndex + 1} / {questions.length}
+        {/* Progress Bar */}
+        <div className="w-full bg-gray-200 h-2 rounded mb-4">
+          <div
+            className="bg-blue-600 h-2 rounded"
+            style={{ width: `${progress}%` }}
+          />
         </div>
 
-        <h2 className="text-lg font-semibold mb-3">
-          {questions[currentIndex]}
+        <h2 className="text-sm text-gray-500 mb-2">
+          Question {currentIndex + 1} / {questions.length}
         </h2>
 
+        <h3 className="text-lg font-semibold mb-4">
+          {questions[currentIndex]}
+        </h3>
+
         <textarea
-          className="w-full border p-2 rounded"
-          rows={4}
+          className="w-full border rounded-xl p-3 focus:outline-none focus:ring-2 focus:ring-blue-500"
+          rows={5}
           value={answer}
           onChange={(e) => setAnswer(e.target.value)}
+          placeholder="Type your answer here..."
         />
 
         <button
           onClick={submitAnswer}
-          disabled={loading}
-          className="mt-3 bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded"
+          disabled={!answer}
+          className="mt-4 w-full bg-blue-600 text-white py-2 rounded-xl hover:bg-blue-700 disabled:opacity-50"
         >
-          {loading ? "Submitting..." : "Submit"}
+          Submit Answer
         </button>
 
         {result && (
-          <div className="mt-4 bg-gray-50 p-3 rounded">
-            <p className="font-bold">Score: {result.score}</p>
+          <div className="mt-4 p-4 bg-gray-50 rounded-xl border">
+            <p className="font-semibold">Score: {result.score}</p>
             <p className="text-gray-600">{result.feedback}</p>
           </div>
         )}
-
       </div>
     </div>
   );
