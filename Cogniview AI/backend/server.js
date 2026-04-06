@@ -3,9 +3,36 @@ const Session=require("./models/Session")
 
 const { v4: uuidv4 } = require("uuid");
 const questionBank = [
-  "What is overfitting?",
-  "What is underfitting?",
-  "Explain bias vs variance"
+  {
+    type: "text",
+    question: "What is overfitting?"
+  },
+  {
+    type: "mcq",
+    question: "Which of the following causes overfitting?",
+    options: [
+      "Too much data",
+      "Too complex model",
+      "Regularization",
+      "Dropout"
+    ],
+    correctAnswer: "Too complex model"
+  },
+  {
+    type: "msq",
+    question: "Select techniques to prevent overfitting",
+    options: [
+      "Regularization",
+      "Dropout",
+      "Increase model complexity",
+      "Cross-validation"
+    ],
+    correctAnswers: [
+      "Regularization",
+      "Dropout",
+      "Cross-validation"
+    ]
+  }
 ];
 connectDB();
 const express = require("express");
@@ -38,7 +65,7 @@ app.post("/start", async (req, res) => {
 
 // ✅ ANSWER
 app.post("/answer", async (req, res) => {
-  const { sessionId, question, answer } = req.body;
+  const { sessionId, questionObj, answer } = req.body;
 
   const session = await Session.findOne({ sessionId });
 
@@ -46,28 +73,56 @@ app.post("/answer", async (req, res) => {
     return res.status(400).json({ error: "Invalid session" });
   }
 
-  try {
+  let result;
+
+  // 🧠 TEXT → ML
+  if (questionObj.type === "text") {
     const mlRes = await axios.post("http://localhost:8001/evaluate", {
-      question,
+      question: questionObj.question,
       answer
     });
 
-    const result = mlRes.data;
-
-    session.answers.push({
-      question,
-      answer,
-      score: result.score,
-      feedback: result.feedback
-    });
-
-    await session.save();
-
-    res.json(result);
-
-  } catch (err) {
-    res.status(500).json({ error: "ML service error" });
+    result = mlRes.data;
   }
+
+  // 🎯 MCQ
+  else if (questionObj.type === "mcq") {
+    const isCorrect = answer === questionObj.correctAnswer;
+
+    result = {
+      score: isCorrect ? 10 : 0,
+      feedback: isCorrect ? "Correct answer" : "Incorrect answer"
+    };
+  }
+
+  // 🔥 MSQ
+  else if (questionObj.type === "msq") {
+    const correct = questionObj.correctAnswers;
+
+    const correctCount = answer.filter(a => correct.includes(a)).length;
+    const total = correct.length;
+
+    const score = (correctCount / total) * 10;
+
+    result = {
+      score: Number(score.toFixed(2)),
+      feedback:
+        score === 10
+          ? "Perfect"
+          : "Partially correct, review concepts"
+    };
+  }
+
+  session.answers.push({
+    question: questionObj.question,
+    answer,
+    score: result.score,
+    feedback: result.feedback
+  });
+
+  await session.save();
+
+  res.json(result);
 });
 
 // ✅ RESULT

@@ -1,41 +1,41 @@
 from fastapi import FastAPI
 from pydantic import BaseModel
-from sklearn.feature_extraction.text import TfidfVectorizer
-from sklearn.metrics.pairwise import cosine_similarity
+from sentence_transformers import SentenceTransformer, util
 
 app = FastAPI()
+
+# Load model once (IMPORTANT)
+model = SentenceTransformer('all-MiniLM-L6-v2')
 
 class InterviewRequest(BaseModel):
     question: str
     answer: str
 
-ideal_answer = {
-    "What is overfitting?": "Overfitting is when a model performs well on training data but poorly on unseen data.",
-    "What is underfitting?": "Underfitting is when a model fails to capture patterns in the data and performs poorly on both training and test data.",
-    "Explain bias vs variance": "Bias is error due to overly simple models, while variance is error due to overly complex models sensitive to data variations."
+ideal_answers = {
+    "What is overfitting?": "Overfitting is when a model performs well on training data but poorly on unseen data due to memorizing noise."
 }
+
 @app.post("/evaluate")
 def evaluate(data: InterviewRequest):
     question = data.question
     user_answer = data.answer
+    ideal_answer = ideal_answers.get(question, "")
 
-    answer_key = ideal_answer.get(question, "")
+    # Convert to embeddings
+    emb1 = model.encode(ideal_answer, convert_to_tensor=True)
+    emb2 = model.encode(user_answer, convert_to_tensor=True)
 
-    if not answer_key:
-        return {"score": 0, "feedback": "No ideal answer available for this question."}
+    similarity = util.cos_sim(emb1, emb2).item()
 
-    vectorizer = TfidfVectorizer()
-    vectors = vectorizer.fit_transform([answer_key, user_answer])
-
-    similarity = cosine_similarity(vectors[0:1], vectors[1:2])[0][0]
     score = round(similarity * 10, 2)
 
+    # Feedback logic
     if similarity > 0.75:
-        feedback = "Good answer, well explained."
+        feedback = "Strong answer with clear understanding."
     elif similarity > 0.4:
-        feedback = "Average answer, missing some key points."
+        feedback = "Partially correct, improve depth."
     else:
-        feedback = "Poor answer, needs improvement."
+        feedback = "Weak answer, revise fundamentals."
 
     return {
         "score": score,
