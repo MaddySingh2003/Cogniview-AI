@@ -1,7 +1,18 @@
-const connectDB = require("./config/db");
-const Session=require("./models/Session")
-
+const express = require("express");
+const cors = require("cors");
+const axios = require("axios");
 const { v4: uuidv4 } = require("uuid");
+
+const connectDB = require("./config/db");
+const Session = require("./models/Session");
+
+connectDB();
+
+const app = express();
+app.use(cors());
+app.use(express.json());
+
+/* ------------------ QUESTION BANK ------------------ */
 const questionBank = [
   {
     type: "text",
@@ -34,18 +45,8 @@ const questionBank = [
     ]
   }
 ];
-connectDB();
-const express = require("express");
-const cors = require("cors");
-const axios = require("axios");
 
-const app = express();
-app.use(cors());
-app.use(express.json());
-
-const sessions = {};
-
-// ✅ START
+/* ------------------ START ------------------ */
 app.post("/start", async (req, res) => {
   const sessionId = uuidv4();
 
@@ -63,7 +64,7 @@ app.post("/start", async (req, res) => {
   });
 });
 
-// ✅ ANSWER
+/* ------------------ ANSWER ------------------ */
 app.post("/answer", async (req, res) => {
   const { sessionId, questionObj, answer } = req.body;
 
@@ -75,61 +76,66 @@ app.post("/answer", async (req, res) => {
 
   let result;
 
-  // 🧠 TEXT → ML
-  if (questionObj.type === "text") {
-    const mlRes = await axios.post("http://localhost:8001/evaluate", {
+  try {
+    // 🔹 TEXT (ML)
+    if (questionObj.type === "text") {
+      const mlRes = await axios.post("http://localhost:8001/evaluate", {
+        question: questionObj.question,
+        answer
+      });
+
+      result = mlRes.data;
+    }
+
+    // 🔹 MCQ
+    else if (questionObj.type === "mcq") {
+      const isCorrect = answer === questionObj.correctAnswer;
+
+      result = {
+        score: isCorrect ? 10 : 0,
+        feedback: isCorrect ? "Correct answer" : "Incorrect answer"
+      };
+    }
+
+    // 🔹 MSQ
+    else if (questionObj.type === "msq") {
+      const correct = questionObj.correctAnswers;
+
+      const correctCount = answer.filter(a => correct.includes(a)).length;
+      const total = correct.length;
+
+      const score = (correctCount / total) * 10;
+
+      result = {
+        score: Number(score.toFixed(2)),
+        feedback:
+          score === 10
+            ? "Perfect answer"
+            : "Partially correct, review concepts"
+      };
+    }
+
+    session.answers.push({
       question: questionObj.question,
-      answer
+      answer,
+      score: result.score,
+      feedback: result.feedback
     });
 
-    result = mlRes.data;
+    await session.save();
+
+    res.json(result);
+
+  } catch (err) {
+    res.status(500).json({ error: "Evaluation failed" });
   }
-
-  // 🎯 MCQ
-  else if (questionObj.type === "mcq") {
-    const isCorrect = answer === questionObj.correctAnswer;
-
-    result = {
-      score: isCorrect ? 10 : 0,
-      feedback: isCorrect ? "Correct answer" : "Incorrect answer"
-    };
-  }
-
-  // 🔥 MSQ
-  else if (questionObj.type === "msq") {
-    const correct = questionObj.correctAnswers;
-
-    const correctCount = answer.filter(a => correct.includes(a)).length;
-    const total = correct.length;
-
-    const score = (correctCount / total) * 10;
-
-    result = {
-      score: Number(score.toFixed(2)),
-      feedback:
-        score === 10
-          ? "Perfect"
-          : "Partially correct, review concepts"
-    };
-  }
-
-  session.answers.push({
-    question: questionObj.question,
-    answer,
-    score: result.score,
-    feedback: result.feedback
-  });
-
-  await session.save();
-
-  res.json(result);
 });
 
-// ✅ RESULT
+/* ------------------ RESULT ------------------ */
 app.get("/result/:sessionId", async (req, res) => {
-  const { sessionId } = req.params;
-
-  const session = await Session.findOne({ sessionId });
+  const session = await Session.findOne({
+    sessionId: req.params.sessionId
+  });
 
   if (!session) {
     return res.status(400).json({ error: "Session not found" });
@@ -146,45 +152,38 @@ app.get("/result/:sessionId", async (req, res) => {
   });
 });
 
-
+/* ------------------ ANALYTICS ------------------ */
 app.get("/analytics/:sessionId", async (req, res) => {
-  const { sessionId } = req.params;
-
-  const session = await Session.findOne({ sessionId });
+  const session = await Session.findOne({
+    sessionId: req.params.sessionId
+  });
 
   if (!session) {
     return res.status(400).json({ error: "Session not found" });
   }
 
-  const answers = session.answers;
-
-  // 🔹 Topic tagging (basic logic)
   const topicScores = {};
 
-  answers.forEach(a => {
+  session.answers.forEach(a => {
     let topic = "General";
 
-    if (a.question.toLowerCase().includes("overfitting")) topic = "ML Basics";
-    else if (a.question.toLowerCase().includes("underfitting")) topic = "ML Basics";
-    else if (a.question.toLowerCase().includes("bias")) topic = "Statistics";
+    if (a.question.toLowerCase().includes("overfitting"))
+      topic = "ML Basics";
+    else if (a.question.toLowerCase().includes("bias"))
+      topic = "Statistics";
 
     if (!topicScores[topic]) topicScores[topic] = [];
-
     topicScores[topic].push(a.score);
   });
 
-  // 🔹 Average per topic
   const topicPerformance = {};
 
-  for (let topic in topicScores) {
-    const scores = topicScores[topic];
-    const avg =
-      scores.reduce((a, b) => a + b, 0) / scores.length;
-
-    topicPerformance[topic] = Number(avg.toFixed(2));
+  for (let t in topicScores) {
+    const scores = topicScores[t];
+    const avg = scores.reduce((a, b) => a + b, 0) / scores.length;
+    topicPerformance[t] = Number(avg.toFixed(2));
   }
 
-  // 🔹 Weak areas
   const weakAreas = Object.entries(topicPerformance)
     .filter(([_, score]) => score < 5)
     .map(([topic]) => topic);
@@ -195,4 +194,4 @@ app.get("/analytics/:sessionId", async (req, res) => {
   });
 });
 
-app.listen(3001, () => console.log("Backend running on 3001"));
+app.listen(3001, () => console.log("Server running on 3001"));
