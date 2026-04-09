@@ -4,7 +4,7 @@ const answerSchema = new mongoose.Schema({
   question: String,
   answer: mongoose.Schema.Types.Mixed, // supports string + array
   score: Number,
-  feedback: String
+  feedback: [String]
 });
 
 const sessionSchema = new mongoose.Schema({

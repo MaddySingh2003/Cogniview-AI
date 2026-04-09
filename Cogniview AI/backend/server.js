@@ -12,7 +12,8 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-/* ------------------ QUESTION BANK ------------------ */
+
+// ================= QUESTION BANK =================
 const questionBank = [
   {
     type: "text",
@@ -46,7 +47,8 @@ const questionBank = [
   }
 ];
 
-/* ------------------ START ------------------ */
+
+// ================= START =================
 app.post("/start", async (req, res) => {
   const sessionId = uuidv4();
 
@@ -64,56 +66,24 @@ app.post("/start", async (req, res) => {
   });
 });
 
-/* ------------------ ANSWER ------------------ */
+
+// ================= ANSWER =================
 app.post("/answer", async (req, res) => {
-  const { sessionId, questionObj, answer } = req.body;
-
-  const session = await Session.findOne({ sessionId });
-
-  if (!session) {
-    return res.status(400).json({ error: "Invalid session" });
-  }
-
-  let result;
-
   try {
-    // 🔹 TEXT (ML)
-    if (questionObj.type === "text") {
-      const mlRes = await axios.post("http://localhost:8001/evaluate", {
-        question: questionObj.question,
-        answer
-      });
+    const { sessionId, questionObj, answer } = req.body;
 
-      result = mlRes.data;
+    const session = await Session.findOne({ sessionId });
+
+    if (!session) {
+      return res.status(400).json({ error: "Invalid session" });
     }
 
-    // 🔹 MCQ
-    else if (questionObj.type === "mcq") {
-      const isCorrect = answer === questionObj.correctAnswer;
+    const mlRes = await axios.post("http://localhost:8001/evaluate", {
+      questionObj,
+      answer
+    });
 
-      result = {
-        score: isCorrect ? 10 : 0,
-        feedback: isCorrect ? "Correct answer" : "Incorrect answer"
-      };
-    }
-
-    // 🔹 MSQ
-    else if (questionObj.type === "msq") {
-      const correct = questionObj.correctAnswers;
-
-      const correctCount = answer.filter(a => correct.includes(a)).length;
-      const total = correct.length;
-
-      const score = (correctCount / total) * 10;
-
-      result = {
-        score: Number(score.toFixed(2)),
-        feedback:
-          score === 10
-            ? "Perfect answer"
-            : "Partially correct, review concepts"
-      };
-    }
+    const result = mlRes.data;
 
     session.answers.push({
       question: questionObj.question,
@@ -127,11 +97,16 @@ app.post("/answer", async (req, res) => {
     res.json(result);
 
   } catch (err) {
-    res.status(500).json({ error: "Evaluation failed" });
+    console.error("ML ERROR:", err.response?.data || err.message);
+
+    res.status(500).json({
+      error: err.response?.data || err.message
+    });
   }
 });
 
-/* ------------------ RESULT ------------------ */
+
+// ================= RESULT =================
 app.get("/result/:sessionId", async (req, res) => {
   const session = await Session.findOne({
     sessionId: req.params.sessionId
@@ -142,56 +117,33 @@ app.get("/result/:sessionId", async (req, res) => {
   }
 
   const scores = session.answers.map(a => a.score);
-  const avg =
-    scores.reduce((a, b) => a + b, 0) / (scores.length || 1);
+
+  const avg = scores.reduce((a, b) => a + b, 0) / (scores.length || 1);
+
+  const variance =
+    scores.reduce((sum, s) => sum + Math.pow(s - avg, 2), 0) /
+    (scores.length || 1);
+
+  let probability = avg * 10;
+
+  if (variance > 5) probability -= 10;
+  if (avg > 8) probability += 5;
+
+  probability = Math.max(0, Math.min(100, probability));
+
+  let verdict = "Needs improvement";
+
+  if (probability > 75) verdict = "High chance of selection";
+  else if (probability > 50) verdict = "Moderate chance";
 
   res.json({
     averageScore: Number(avg.toFixed(2)),
-    totalQuestions: session.questions.length,
+    selectionProbability: `${Math.round(probability)}%`,
+    verdict,
     answers: session.answers
   });
 });
 
-/* ------------------ ANALYTICS ------------------ */
-app.get("/analytics/:sessionId", async (req, res) => {
-  const session = await Session.findOne({
-    sessionId: req.params.sessionId
-  });
 
-  if (!session) {
-    return res.status(400).json({ error: "Session not found" });
-  }
-
-  const topicScores = {};
-
-  session.answers.forEach(a => {
-    let topic = "General";
-
-    if (a.question.toLowerCase().includes("overfitting"))
-      topic = "ML Basics";
-    else if (a.question.toLowerCase().includes("bias"))
-      topic = "Statistics";
-
-    if (!topicScores[topic]) topicScores[topic] = [];
-    topicScores[topic].push(a.score);
-  });
-
-  const topicPerformance = {};
-
-  for (let t in topicScores) {
-    const scores = topicScores[t];
-    const avg = scores.reduce((a, b) => a + b, 0) / scores.length;
-    topicPerformance[t] = Number(avg.toFixed(2));
-  }
-
-  const weakAreas = Object.entries(topicPerformance)
-    .filter(([_, score]) => score < 5)
-    .map(([topic]) => topic);
-
-  res.json({
-    topicPerformance,
-    weakAreas
-  });
-});
-
+// ================= SERVER =================
 app.listen(3001, () => console.log("Server running on 3001"));
