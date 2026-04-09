@@ -1,118 +1,58 @@
 import { useState } from "react";
-import axios from "axios";
-
-/* ================= TYPES ================= */
-
-type Question = {
-  type: "text" | "mcq" | "msq";
-  question: string;
-  options?: string[];
-  correctAnswer?: string;
-  correctAnswers?: string[];
-};
-
-type Result = {
-  score: number;
-  feedback: string[];
-};
-
-type FinalResult = {
-  averageScore: number;
-  selectionProbability: string;
-  verdict: string;
-  answers: {
-    question: string;
-    score: number;
-    feedback: string[];
-  }[];
-};
-
-/* ================= COMPONENT ================= */
+import API from "./services/api";
+import type { Question, Result, FinalResult } from "./types";
 
 export default function App() {
   const [sessionId, setSessionId] = useState<string | null>(null);
-  const [questions, setQuestions] = useState<Question[]>([]);
-  const [currentIndex, setCurrentIndex] = useState(0);
-
+  const [currentQ, setCurrentQ] = useState<Question | null>(null);
   const [answer, setAnswer] = useState<string | string[]>("");
-
   const [result, setResult] = useState<Result | null>(null);
   const [finalResult, setFinalResult] = useState<FinalResult | null>(null);
+  const [step, setStep] = useState(0);
 
-  const currentQ = questions[currentIndex];
-
-  /* ================= START ================= */
-
+  // 🚀 START
   const startInterview = async () => {
-    try {
-      const res = await axios.post("http://localhost:3001/start");
-
-      setSessionId(res.data.sessionId);
-      setQuestions(res.data.questions);
-      setCurrentIndex(0);
-
-      // Reset states
-      setAnswer("");
-      setResult(null);
-      setFinalResult(null);
-
-    } catch (err) {
-      console.error(err);
-    }
+    const res = await API.post("/start");
+    setSessionId(res.data.sessionId);
+    setCurrentQ(res.data.question);
+    setStep(1);
   };
 
-  /* ================= SUBMIT ================= */
-
+  // 🚀 SUBMIT
   const submitAnswer = async () => {
-    if (!sessionId || !currentQ) return;
+    const res = await API.post("/answer", {
+      sessionId,
+      questionObj: currentQ,
+      answer
+    });
 
-    try {
-      const res = await axios.post("http://localhost:3001/answer", {
-        sessionId,
-        questionObj: currentQ,
-        answer,
-      });
+    setResult(res.data.result);
 
-      setResult(res.data);
-
-      const next = currentIndex + 1;
-
-      if (next < questions.length) {
-        setTimeout(() => {
-          setCurrentIndex(next);
-
-          // 🔥 Reset answer based on type
-          if (questions[next].type === "msq") {
-            setAnswer([]);
-          } else {
-            setAnswer("");
-          }
-
-          setResult(null);
-        }, 1200);
-      } else {
-        const finalRes = await axios.get(
-          `http://localhost:3001/result/${sessionId}`
-        );
-        setFinalResult(finalRes.data);
-      }
-    } catch (err) {
-      console.error("Submit Error:", err);
+    if (res.data.isFinished) {
+      const finalRes = await API.get(`/result/${sessionId}`);
+      setFinalResult(finalRes.data);
+      setStep(3);
+    } else {
+      setTimeout(() => {
+        setCurrentQ(res.data.nextQuestion);
+        setAnswer(res.data.nextQuestion.type === "msq" ? [] : "");
+        setResult(null);
+        setStep((s) => s + 1);
+      }, 1200);
     }
   };
 
-  /* ================= START SCREEN ================= */
-
+  // 🧠 START SCREEN
   if (!sessionId) {
     return (
-      <div className="h-screen flex items-center justify-center bg-gray-100">
-        <div className="bg-white p-8 rounded-2xl shadow-lg text-center">
-          <h1 className="text-2xl font-bold mb-4">
-            AI Mock Interview System
+      <div className="h-screen flex items-center justify-center bg-gradient-to-br from-blue-100 to-purple-200">
+        <div className="bg-white p-10 rounded-2xl shadow-xl text-center">
+          <h1 className="text-3xl font-bold mb-4">
+            AI Hiring Intelligence System
           </h1>
           <button
             onClick={startInterview}
-            className="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700"
+            className="bg-blue-600 text-white px-6 py-3 rounded-xl hover:bg-blue-700"
           >
             Start Interview
           </button>
@@ -121,25 +61,21 @@ export default function App() {
     );
   }
 
-  /* ================= FINAL RESULT ================= */
-
+  // 🎯 FINAL SCREEN
   if (finalResult) {
     return (
       <div className="min-h-screen bg-gray-100 p-6">
-        <div className="max-w-3xl mx-auto bg-white p-6 rounded-2xl shadow-lg">
-          <h2 className="text-2xl font-bold mb-4">Interview Report</h2>
+        <div className="max-w-3xl mx-auto bg-white p-6 rounded-2xl shadow-xl">
+          <h2 className="text-2xl font-bold mb-4">Final Report</h2>
 
-          <p><b>Average Score:</b> {finalResult.averageScore}</p>
-          <p><b>Selection Probability:</b> {finalResult.selectionProbability}</p>
-          <p className="mb-4"><b>Verdict:</b> {finalResult.verdict}</p>
-
-          <hr className="mb-4" />
+          <p>Average Score: {finalResult.averageScore}</p>
+          <p>Selection Probability: {finalResult.selectionProbability}</p>
+          <p className="mb-4">Verdict: {finalResult.verdict}</p>
 
           {finalResult.answers.map((a, i) => (
-            <div key={i} className="mb-4">
+            <div key={i} className="mb-4 border-b pb-2">
               <p className="font-semibold">{a.question}</p>
               <p>Score: {a.score}</p>
-
               {a.feedback.map((f, idx) => (
                 <p key={idx} className="text-sm text-gray-600">
                   • {f}
@@ -152,18 +88,15 @@ export default function App() {
     );
   }
 
-  /* ================= INTERVIEW SCREEN ================= */
-
+  // 🎤 INTERVIEW
   return (
-    <div className="min-h-screen bg-gray-100 flex items-center justify-center">
-      <div className="w-full max-w-2xl bg-white p-6 rounded-2xl shadow-lg">
+    <div className="h-screen flex items-center justify-center bg-gray-100">
+      <div className="bg-white p-6 w-full max-w-2xl rounded-2xl shadow-xl">
 
-        {/* Progress */}
-        <div className="mb-4 text-sm text-gray-500">
-          Question {currentIndex + 1} / {questions.length}
-        </div>
+        <p className="text-sm text-gray-500 mb-2">
+          Step {step}
+        </p>
 
-        {/* Question */}
         <h2 className="text-lg font-semibold mb-4">
           {currentQ?.question}
         </h2>
@@ -171,7 +104,7 @@ export default function App() {
         {/* TEXT */}
         {currentQ?.type === "text" && (
           <textarea
-            className="w-full border p-2 rounded-lg"
+            className="w-full border p-3 rounded-xl"
             rows={4}
             value={answer as string}
             onChange={(e) => setAnswer(e.target.value)}
@@ -184,9 +117,7 @@ export default function App() {
             <label key={opt} className="block mb-2">
               <input
                 type="radio"
-                name="mcq"
                 className="mr-2"
-                checked={answer === opt}
                 onChange={() => setAnswer(opt)}
               />
               {opt}
@@ -195,43 +126,35 @@ export default function App() {
 
         {/* MSQ */}
         {currentQ?.type === "msq" &&
-          currentQ.options?.map((opt) => {
-            const selected = Array.isArray(answer) && answer.includes(opt);
+          currentQ.options?.map((opt) => (
+            <label key={opt} className="block mb-2">
+              <input
+                type="checkbox"
+                className="mr-2"
+                onChange={(e) => {
+                  const prev = Array.isArray(answer) ? answer : [];
 
-            return (
-              <label key={opt} className="block mb-2">
-                <input
-                  type="checkbox"
-                  className="mr-2"
-                  checked={selected}
-                  onChange={(e) => {
-                    const prev = Array.isArray(answer) ? answer : [];
+                  if (e.target.checked) {
+                    setAnswer([...prev, opt]);
+                  } else {
+                    setAnswer(prev.filter((a) => a !== opt));
+                  }
+                }}
+              />
+              {opt}
+            </label>
+          ))}
 
-                    if (e.target.checked) {
-                      setAnswer([...prev, opt]);
-                    } else {
-                      setAnswer(prev.filter((a) => a !== opt));
-                    }
-                  }}
-                />
-                {opt}
-              </label>
-            );
-          })}
-
-        {/* Submit */}
         <button
           onClick={submitAnswer}
-          className="mt-4 bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700"
+          className="mt-4 bg-green-600 text-white px-4 py-2 rounded-xl hover:bg-green-700"
         >
           Submit
         </button>
 
-        {/* Result */}
         {result && (
-          <div className="mt-4 p-3 bg-gray-50 rounded-lg">
+          <div className="mt-4 bg-gray-50 p-3 rounded-xl">
             <p className="font-semibold">Score: {result.score}</p>
-
             {result.feedback.map((f, i) => (
               <p key={i} className="text-sm text-gray-600">
                 • {f}

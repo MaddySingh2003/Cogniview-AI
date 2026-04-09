@@ -2,14 +2,15 @@ const mongoose = require("mongoose");
 
 const answerSchema = new mongoose.Schema({
   question: String,
-  answer: mongoose.Schema.Types.Mixed, // supports string + array
+  answer: mongoose.Schema.Types.Mixed,
   score: Number,
   feedback: [String]
 });
 
 const sessionSchema = new mongoose.Schema({
   sessionId: String,
-  questions: Array,
+  currentDifficulty: String,
+  questions: [Object],
   answers: [answerSchema],
   createdAt: {
     type: Date,
