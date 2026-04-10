@@ -1,21 +1,17 @@
 const mongoose = require("mongoose");
 
-const answerSchema = new mongoose.Schema({
-  question: String,
-  answer: mongoose.Schema.Types.Mixed,
-  score: Number,
-  feedback: [String]
-});
-
 const sessionSchema = new mongoose.Schema({
   sessionId: String,
+  role: String,
   currentDifficulty: String,
-  questions: [Object],
-  answers: [answerSchema],
-  createdAt: {
-    type: Date,
-    default: Date.now
-  }
+  askedQuestions: [String],
+  answers: [
+    {
+      question: String,
+      score: Number,
+      feedback: [String]
+    }
+  ]
 });
 
 module.exports = mongoose.model("Session", sessionSchema);
