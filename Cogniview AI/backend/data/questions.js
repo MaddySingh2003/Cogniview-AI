@@ -1,5 +1,5 @@
 module.exports = [
-  // ===== EASY =====
+  // ================= DATA SCIENTIST =================
   {
     role: "data-scientist",
     type: "text",
@@ -9,39 +9,43 @@ module.exports = [
   {
     role: "data-scientist",
     type: "text",
-    question: "What is underfitting?",
+    question: "Explain bias-variance tradeoff",
+    difficulty: "medium"
+  },
+
+  // ================= BACKEND =================
+  {
+    role: "backend",
+    type: "text",
+    question: "What is middleware in Express?",
     difficulty: "easy"
   },
   {
-    role: "data-scientist",
+    role: "backend",
     type: "mcq",
-    question: "Which technique reduces overfitting?",
-    options: ["Regularization", "More layers", "Less data"],
-    correctAnswer: "Regularization",
+    question: "Which method is used to create server in Express?",
+    options: ["createServer()", "express()", "listen()"],
+    correctAnswer: "express()",
     difficulty: "easy"
   },
-
-  // ===== MEDIUM =====
   {
-    role: "data-scientist",
+    role: "backend",
     type: "text",
-    question: "Explain bias vs variance",
+    question: "Explain event loop in Node.js",
     difficulty: "medium"
   },
   {
-    role: "data-scientist",
+    role: "backend",
     type: "msq",
-    question: "Select methods to prevent overfitting",
-    options: ["Dropout", "Regularization", "Cross-validation", "More noise"],
-    correctAnswers: ["Dropout", "Regularization", "Cross-validation"],
+    question: "Select Node.js features",
+    options: ["Single-threaded", "Blocking", "Event-driven"],
+    correctAnswers: ["Single-threaded", "Event-driven"],
     difficulty: "medium"
   },
-
-  // ===== HARD =====
   {
-    role: "data-scientist",
+    role: "backend",
     type: "text",
-    question: "Explain cross-validation in detail",
+    question: "What is microservices architecture?",
     difficulty: "hard"
   }
 ];
