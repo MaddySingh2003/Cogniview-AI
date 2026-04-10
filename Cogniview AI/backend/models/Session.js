@@ -9,7 +9,8 @@ const sessionSchema = new mongoose.Schema({
     {
       question: String,
       score: Number,
-      feedback: [String]
+      feedback: [String],
+      topic: String
     }
   ]
 });

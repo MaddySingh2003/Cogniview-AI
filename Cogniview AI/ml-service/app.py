@@ -8,9 +8,7 @@ app = FastAPI()
 model = SentenceTransformer('all-MiniLM-L6-v2')
 
 
-# =======================
-# 📦 MODELS
-# =======================
+# ================= MODELS =================
 
 class Question(BaseModel):
     type: str
@@ -18,6 +16,7 @@ class Question(BaseModel):
     options: List[str] = []
     correctAnswer: Optional[str] = None
     correctAnswers: List[str] = []
+    topic: Optional[str] = "General"
 
 
 class InterviewRequest(BaseModel):
@@ -25,18 +24,15 @@ class InterviewRequest(BaseModel):
     answer: Any
 
 
-# =======================
-# 🧠 DATA
-# =======================
+# ================= DATA =================
 
 ideal_answers = {
-    "What is overfitting?": "Overfitting is when a model performs well on training data but poorly on unseen data due to memorizing noise."
+    "What is overfitting?":
+        "Overfitting is when a model performs well on training data but poorly on unseen data."
 }
 
 
-# =======================
-# 🧠 STRUCTURE ANALYSIS
-# =======================
+# ================= STRUCTURE =================
 
 def analyze_structure(answer: str):
     words = answer.split()
@@ -63,25 +59,20 @@ def analyze_structure(answer: str):
     return score, feedback
 
 
-# =======================
-# 🚀 MAIN API
-# =======================
+# ================= MAIN =================
 
 @app.post("/evaluate")
 def evaluate(data: InterviewRequest):
     q = data.questionObj
     answer = data.answer
 
-    # =======================
-    # 🧠 TEXT
-    # =======================
+    # ===== TEXT =====
     if q.type == "text":
 
         if not isinstance(answer, str) or answer.strip() == "":
             return {
-                "score": 0,
-                "feedback": ["Answer cannot be empty"],
-                "type": "text"
+                "score": 2,
+                "feedback": ["Answer cannot be empty"]
             }
 
         ideal = ideal_answers.get(q.question, "")
@@ -93,71 +84,56 @@ def evaluate(data: InterviewRequest):
 
         structure_score, structure_feedback = analyze_structure(answer)
 
-        final_score = (similarity * 0.7 + (structure_score / 3) * 0.3) * 10
+        final_score = (
+            (similarity * 0.7 + (structure_score / 3) * 0.3) * 10
+        )
+
+        # 🔥 NORMALIZATION FIX
+        if final_score < 2:
+            final_score += 2
+
         final_score = round(final_score, 2)
 
+        # base feedback
         if similarity > 0.75:
-            base_feedback = "Strong conceptual understanding."
+            base = "Strong understanding"
         elif similarity > 0.4:
-            base_feedback = "Partially correct, improve clarity."
+            base = "Partial understanding"
         else:
-            base_feedback = "Weak understanding."
+            base = "Weak understanding"
 
-        feedback = [base_feedback] + structure_feedback
+        feedback = [base] + structure_feedback
+
+        # 🔥 CLEAN FEEDBACK
+        feedback = list(set(feedback))[:2]
 
         return {
             "score": final_score,
-            "feedback": feedback,
-            "type": "text"
+            "feedback": feedback
         }
 
-    # =======================
-    # 🎯 MCQ
-    # =======================
-    elif q.type == "mcq":
-
-        if not isinstance(answer, str):
-            return {
-                "score": 0,
-                "feedback": ["Invalid answer format for MCQ"],
-                "type": "mcq"
-            }
-
+    # ===== MCQ =====
+    if q.type == "mcq":
         is_correct = answer == q.correctAnswer
 
         return {
-            "score": 10 if is_correct else 0,
-            "feedback": ["Correct answer"] if is_correct else ["Incorrect answer"],
-            "type": "mcq"
+            "score": 10 if is_correct else 2,
+            "feedback": ["Correct"] if is_correct else ["Incorrect"]
         }
 
-    # =======================
-    # 🔥 MSQ
-    # =======================
-    elif q.type == "msq":
-
+    # ===== MSQ =====
+    if q.type == "msq":
         if not isinstance(answer, list):
-            return {
-                "score": 0,
-                "feedback": ["Invalid answer format for MSQ"],
-                "type": "msq"
-            }
+            return {"score": 2, "feedback": ["Invalid format"]}
 
         correct = set(q.correctAnswers)
         user = set(answer)
 
-        correct_count = len(correct.intersection(user))
-        total = len(correct)
-
-        score = (correct_count / total) * 10
+        score = (len(correct & user) / len(correct)) * 10
 
         return {
             "score": round(score, 2),
-            "feedback": ["Perfect"] if score == 10 else ["Partially correct"],
-            "type": "msq"
+            "feedback": ["Perfect"] if score == 10 else ["Partially correct"]
         }
 
-    return {
-        "score": 0,
-        "feedback": ["Invalid question type"]
-    }
+    return {"score": 2, "feedback": ["Invalid question"]}

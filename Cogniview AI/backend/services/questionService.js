@@ -16,7 +16,7 @@ function getNextQuestion(session, lastScore) {
     !session.askedQuestions.includes(q.question)
   );
 
-  // fallback
+  // fallback: any unused
   if (available.length === 0) {
     available = questionBank.filter(q =>
       q.role === session.role &&
@@ -24,10 +24,10 @@ function getNextQuestion(session, lastScore) {
     );
   }
 
+  // 🔥 FINAL FIX: stop if no question left
   if (available.length === 0) return null;
 
   return available[Math.floor(Math.random() * available.length)];
 }
 
-// ✅ CORRECT EXPORT
-module.exports = { getNextQuestion };
+module.exports = { getNextQuestion };   
