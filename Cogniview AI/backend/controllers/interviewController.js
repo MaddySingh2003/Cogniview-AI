@@ -52,11 +52,12 @@ exports.submitAnswer = async (req, res) => {
 
     const result = mlRes.data;
 
-    session.answers.push({
-      question: questionObj.question,
-      score: result.score,
-      feedback: result.feedback
-    });
+   session.answers.push({
+  question: questionObj.question,
+  score: result.score,
+  feedback: result.feedback,
+  topic: questionObj.topic || "General"
+});
 
     if (!session.askedQuestions.includes(questionObj.question)) {
       session.askedQuestions.push(questionObj.question);
@@ -99,8 +100,14 @@ exports.getResult = async (req, res) => {
   const avg =
     scores.reduce((a, b) => a + b, 0) / (scores.length || 1);
 
-  res.json({
-    averageScore: avg.toFixed(2),
-    answers: session.answers
-  });
+  const { analyzePerformance } = require("../services/analysisService");
+
+const analysis = analyzePerformance(session.answers);
+
+res.json({
+  averageScore: avg.toFixed(2),
+  topicPerformance: analysis.topicAvg,
+  weakAreas: analysis.weakAreas,
+  answers: session.answers
+});
 };
