@@ -94,7 +94,17 @@ export default function App() {
               Average Score:{" "}
               <span className="font-semibold">{final.averageScore}</span>
             </p>
-          </div>
+          </div><p className="mt-2 font-semibold">
+  Selection Probability: {final.selectionProbability}
+</p>
+
+<p className="font-semibold">
+  Verdict: {final.verdict}
+</p>
+
+<p className="text-sm text-gray-600">
+  {final.finalDecision}
+</p>
 
           {final.answers.map((a: any, i: number) => (
             <div key={i} className="mb-4 border-b pb-3">
