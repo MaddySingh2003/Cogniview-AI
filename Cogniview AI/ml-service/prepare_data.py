@@ -13,7 +13,7 @@ def convert_label(score):
     if score>=4:
         return "good"
     elif score>=2:
-        return "avarage"
+        return "average"
     else:
         return "poor"
     
