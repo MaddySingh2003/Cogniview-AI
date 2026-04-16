@@ -1,16 +1,35 @@
-const { GoogleGenerativeAI } = require("@google/generative-ai");
 require("dotenv").config();
 
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+const API_KEY = process.env.GEMINI_API_KEY;
+const MODEL = "gemini-2.5-flash";
+
+// 🔁 retry function
+async function callGeminiWithRetry(url, options, retries = 3) {
+  for (let i = 0; i < retries; i++) {
+    try {
+      const res = await fetch(url, options);
+
+      if (res.ok) {
+        return await res.json();
+      }
+
+      console.warn(`Retry ${i + 1} failed`);
+    } catch (err) {
+      console.warn(`Error attempt ${i + 1}:`, err.message);
+    }
+
+    await new Promise(r => setTimeout(r, 1500));
+  }
+
+  throw new Error("Gemini failed after retries");
+}
 
 async function generateQuestions(role, level) {
   try {
-    const model = genAI.getGenerativeModel({
-      model: "gemini-2.5-flash" // this works ONLY here
-    });
+    const url = `https://generativelanguage.googleapis.com/v1/models/${MODEL}:generateContent?key=${API_KEY}`;
 
     const prompt = `
-You are an expert interviewer.
+You are a strict JSON generator.
 
 Generate EXACTLY 15 interview questions.
 
@@ -21,15 +40,29 @@ Rules:
 - 5 text (modelAnswer + topic)
 - 5 mcq (options + correctAnswer)
 - 5 msq (options + correctAnswers)
-
-Return ONLY valid JSON array.
+- Return ONLY JSON array
 `;
 
-    const result = await model.generateContent(prompt);
+    const data = await callGeminiWithRetry(url, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        contents: [
+          {
+            role: "user",
+            parts: [{ text: prompt }]
+          }
+        ]
+      })
+    });
 
-    const text = result.response.text();
+    const text =
+      data.candidates?.[0]?.content?.parts?.[0]?.text;
 
-    // clean JSON
+    if (!text) throw new Error("No response text");
+
     const cleaned = text
       .replace(/```json/g, "")
       .replace(/```/g, "")
@@ -39,11 +72,12 @@ Return ONLY valid JSON array.
     const end = cleaned.lastIndexOf("]");
 
     if (start === -1 || end === -1) {
-      throw new Error("Invalid JSON");
+      throw new Error("Invalid JSON format");
     }
 
     const parsed = JSON.parse(cleaned.slice(start, end + 1));
 
+    // ✅ Validate
     if (!Array.isArray(parsed) || parsed.length !== 15) {
       throw new Error("Invalid question count");
     }
@@ -53,10 +87,12 @@ Return ONLY valid JSON array.
   } catch (err) {
     console.error("❌ GEMINI ERROR:", err.message);
 
+    console.log("⚠️ Using fallback questions...");
+
     return [
       ...Array(5).fill({
         type: "text",
-        question: "Explain core concept",
+        question: `Explain ${role} concept`,
         modelAnswer: "Fallback answer",
         topic: role,
         difficulty: level
