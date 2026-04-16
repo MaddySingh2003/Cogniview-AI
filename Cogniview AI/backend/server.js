@@ -1,7 +1,8 @@
 const express = require("express");
 const cors = require("cors");
-const connectDB = require("./config/db");
+require("dotenv").config();
 
+const connectDB = require("./config/db");
 const interviewRoutes = require("./routes/interviewRoutes");
 
 connectDB();
@@ -13,4 +14,6 @@ app.use(express.json());
 
 app.use("/", interviewRoutes);
 
-app.listen(3001, () => console.log("Server running on 3001"));
+app.listen(3001, () => {
+  console.log("Server running on 3001 🚀");
+});
