@@ -15,12 +15,12 @@ app = FastAPI()
 class AnswerRequest(BaseModel):
     question: str
     answer: str
+    model_answer:str
 
 @app.get("/")
 def home():
     return {"message": "AI Interview ML Service Running ✅"}
 
-@app.post("/predict")
 @app.post("/predict")
 def predict(data: AnswerRequest):
     text = data.question + " " + data.answer
@@ -32,16 +32,14 @@ def predict(data: AnswerRequest):
 
     good_prob = float(probs[model.classes_.tolist().index("good")])
 
-    # semantic similarity
+    # ✅ FIXED semantic similarity
     emb1 = embedder.encode(data.answer, convert_to_tensor=True)
-    emb2 = embedder.encode(data.question, convert_to_tensor=True)
+    emb2 = embedder.encode(data.model_answer, convert_to_tensor=True)
 
     semantic_score = float(util.cos_sim(emb1, emb2))
 
-    # 🔥 HYBRID SCORE
     final_score = (0.6 * semantic_score) + (0.4 * good_prob)
 
-    # 🎯 FINAL DECISION
     if final_score >= 0.75:
         final_label = "good"
     elif final_score >= 0.5:

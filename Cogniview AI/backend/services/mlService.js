@@ -1,30 +1,29 @@
-const axios=require("axios");
+const axios = require("axios");
 
-async function evaluateText(question,answer,modelAnswer){
-    try {
-        const res=await axios.post("http://localhost:8000/predict",{
-            questions,
-            answer,
-            model_answer:modelAnswer
-        });
+async function evaluateText(question, answer, modelAnswer) {
+  try {
+    const res = await axios.post("http://localhost:8000/predict", {
+      question: question,   // ✅ FIXED
+      answer: answer,
+      model_answer: modelAnswer
+    });
 
-        const data=res.data;
+    const data = res.data;
 
-        return{
-            score:Math.round(data.final_score*10),
-            feedback:[`AI:${data.final_label}`],
-            confidence:data.confidence
+    return {
+      score: Math.round(data.final_score * 10),
+      feedback: [`AI: ${data.final_label}`],
+      confidence: data.final_score
+    };
 
-        };
+  } catch (err) {
+    console.error("ML ERROR:", err.message);
 
-
-    }catch(err){
-        console.error("ML ERROR",err.message);
-        return{
-            score:5,
-            feedback:["Fallback evaluation"]
-        };
-    }
-    
+    return {
+      score: 5,
+      feedback: ["Fallback evaluation"]
+    };
+  }
 }
-module.exports={evaluateText};
+
+module.exports = { evaluateText };
