@@ -1,12 +1,10 @@
 const express = require("express");
 const router = express.Router();
 
-const {
-  startInterview,
-  submitAnswer
-} = require("../controllers/interviewController");
+const interviewController = require("../controllers/interviewController");
 
-router.post("/start", startInterview);
-router.post("/answer", submitAnswer);
+// ✅ USE OBJECT REFERENCE (safer)
+router.post("/start", interviewController.startInterview);
+router.post("/answer", interviewController.submitAnswer);
 
 module.exports = router;

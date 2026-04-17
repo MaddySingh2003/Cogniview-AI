@@ -1,15 +1,33 @@
 const { generateQuestions } = require("../services/llmService");
 const Session = require("../models/Session");
+const QuestionCache = require("../models/QuestionCache");
 const { v4: uuidv4 } = require("uuid");
-const { evaluateText } = require("../services/mlService");
 
 module.exports = {
 
+  // ================= START =================
   startInterview: async (req, res) => {
     try {
       const { role, level } = req.body;
 
-      const questions = await generateQuestions(role, level);
+      let cache = await QuestionCache.findOne({ role, level });
+
+      let questions;
+
+      if (cache) {
+        console.log("⚡ Using cached questions");
+        questions = cache.questions;
+
+      } else {
+        const result = await generateQuestions(role, level);
+        questions = result.questions;
+
+        if (result.source !== "fallback") {
+          await QuestionCache.create({ role, level, questions });
+        } else {
+          console.log("⚠️ Not caching fallback");
+        }
+      }
 
       const session = new Session({
         sessionId: uuidv4(),
@@ -29,15 +47,20 @@ module.exports = {
 
     } catch (err) {
       console.error(err);
-      res.status(500).json({ error: "LLM failed" });
+      res.status(500).json({ error: "Start failed" });
     }
   },
 
+  // ================= ANSWER =================
   submitAnswer: async (req, res) => {
     try {
       const { sessionId, answer } = req.body;
 
       const session = await Session.findOne({ sessionId });
+
+      if (!session) {
+        return res.status(400).json({ error: "Session not found" });
+      }
 
       const index = session.answers.length;
       const question = session.questions[index];
@@ -45,11 +68,10 @@ module.exports = {
       let result;
 
       if (question.type === "text") {
-        result = await evaluateText(
-          question.question,
-          answer,
-          question.modelAnswer
-        );
+        result = {
+          score: 7,
+          feedback: ["Text evaluation placeholder"]
+        };
       }
 
       else if (question.type === "mcq") {
@@ -93,4 +115,5 @@ module.exports = {
       res.status(500).json({ error: "Answer failed" });
     }
   }
+
 };

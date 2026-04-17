@@ -1,101 +1,152 @@
 require("dotenv").config();
 
-const API_KEY = process.env.GEMINI_API_KEY;
-const MODEL = "gemini-2.5-flash";
+const GEMINI_KEY = process.env.GEMINI_API_KEY;
+const HF_KEY = process.env.HUGGINGFACE_API_KEY;
 
-// 🔁 retry function
-async function callGeminiWithRetry(url, options, retries = 3) {
-  for (let i = 0; i < retries; i++) {
-    try {
-      const res = await fetch(url, options);
+const GEMINI_MODEL = "gemini-2.5-flash";
+const HF_MODEL = "mistralai/Mistral-7B-Instruct-v0.2";
 
-      if (res.ok) {
-        return await res.json();
-      }
+// ================= STRICT PROMPT =================
+function buildPrompt(role, level) {
+  return `
+You are an AI interviewer.
 
-      console.warn(`Retry ${i + 1} failed`);
-    } catch (err) {
-      console.warn(`Error attempt ${i + 1}:`, err.message);
-    }
-
-    await new Promise(r => setTimeout(r, 1500));
-  }
-
-  throw new Error("Gemini failed after retries");
-}
-
-async function generateQuestions(role, level) {
-  try {
-    const url = `https://generativelanguage.googleapis.com/v1/models/${MODEL}:generateContent?key=${API_KEY}`;
-
-    const prompt = `
-You are a strict JSON generator.
-
-Generate EXACTLY 15 interview questions.
+Generate EXACTLY 15 questions in STRICT JSON format.
 
 Role: ${role}
 Level: ${level}
 
-Rules:
-- 5 text (modelAnswer + topic)
-- 5 mcq (options + correctAnswer)
-- 5 msq (options + correctAnswers)
-- Return ONLY JSON array
-`;
+RULES:
+- Return ONLY JSON (no text, no explanation)
+- Must be ARRAY of 15 objects
 
-    const data = await callGeminiWithRetry(url, {
+STRUCTURE:
+
+TEXT:
+{
+  "type": "text",
+  "question": "...",
+  "modelAnswer": "...",
+  "topic": "...",
+  "difficulty": "${level}"
+}
+
+MCQ:
+{
+  "type": "mcq",
+  "question": "...",
+  "options": ["A","B","C","D"],
+  "correctAnswer": "A"
+}
+
+MSQ:
+{
+  "type": "msq",
+  "question": "...",
+  "options": ["A","B","C","D"],
+  "correctAnswers": ["A","C"]
+}
+
+DISTRIBUTION:
+- 5 text
+- 5 mcq
+- 5 msq
+`;
+}
+
+// ================= PARSER =================
+function safeParse(text) {
+  const cleaned = text
+    .replace(/```json/g, "")
+    .replace(/```/g, "")
+    .trim();
+
+  const start = cleaned.indexOf("[");
+  const end = cleaned.lastIndexOf("]");
+
+  if (start === -1 || end === -1) {
+    throw new Error("JSON not found");
+  }
+
+  const parsed = JSON.parse(cleaned.slice(start, end + 1));
+
+  if (!Array.isArray(parsed) || parsed.length !== 15) {
+    throw new Error("Invalid count");
+  }
+
+  return parsed;
+}
+
+// ================= NORMALIZER =================
+function normalizeQuestions(questions, level) {
+  return questions.map((q, i) => {
+    return {
+      id: i + 1,
+      type: q.type || "text",
+      question: q.question || "Sample question",
+      modelAnswer: q.modelAnswer || "",
+      topic: q.topic || "General",
+      difficulty: q.difficulty || level,
+      options: q.options || [],
+      correctAnswer: q.correctAnswer || null,
+      correctAnswers: q.correctAnswers || []
+    };
+  });
+}
+
+// ================= GEMINI =================
+async function callGemini(prompt) {
+  const url = `https://generativelanguage.googleapis.com/v1/models/${GEMINI_MODEL}:generateContent?key=${GEMINI_KEY}`;
+
+  const res = await fetch(url, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      contents: [{ role: "user", parts: [{ text: prompt }] }]
+    })
+  });
+
+  if (!res.ok) throw new Error(`Gemini ${res.status}`);
+
+  const data = await res.json();
+
+  const text =
+    data.candidates?.[0]?.content?.parts?.[0]?.text;
+
+  if (!text) throw new Error("No response");
+
+  return safeParse(text);
+}
+
+// ================= HF =================
+async function callHF(prompt) {
+  const res = await fetch(
+    `https://api-inference.huggingface.co/models/${HF_MODEL}`,
+    {
       method: "POST",
       headers: {
+        Authorization: `Bearer ${HF_KEY}`,
         "Content-Type": "application/json"
       },
-      body: JSON.stringify({
-        contents: [
-          {
-            role: "user",
-            parts: [{ text: prompt }]
-          }
-        ]
-      })
-    });
-
-    const text =
-      data.candidates?.[0]?.content?.parts?.[0]?.text;
-
-    if (!text) throw new Error("No response text");
-
-    const cleaned = text
-      .replace(/```json/g, "")
-      .replace(/```/g, "")
-      .trim();
-
-    const start = cleaned.indexOf("[");
-    const end = cleaned.lastIndexOf("]");
-
-    if (start === -1 || end === -1) {
-      throw new Error("Invalid JSON format");
+      body: JSON.stringify({ inputs: prompt })
     }
+  );
 
-    const parsed = JSON.parse(cleaned.slice(start, end + 1));
+  const data = await res.json();
 
-    // ✅ Validate
-    if (!Array.isArray(parsed) || parsed.length !== 15) {
-      throw new Error("Invalid question count");
-    }
+  if (data.error) throw new Error(data.error);
 
-    return parsed;
+  return safeParse(data[0]?.generated_text);
+}
 
-  } catch (err) {
-    console.error("❌ GEMINI ERROR:", err.message);
-
-    console.log("⚠️ Using fallback questions...");
-
-    return [
+// ================= FALLBACK =================
+function fallback(role, level) {
+  return normalizeQuestions(
+    [
       ...Array(5).fill({
         type: "text",
-        question: `Explain ${role} concept`,
-        modelAnswer: "Fallback answer",
-        topic: role,
-        difficulty: level
+        question: `Explain ${role}`,
+        modelAnswer: "Fallback answer"
       }),
       ...Array(5).fill({
         type: "mcq",
@@ -109,8 +160,35 @@ Rules:
         options: ["A", "B", "C", "D"],
         correctAnswers: ["A", "C"]
       })
-    ];
+    ],
+    level
+  );
+}
+
+// ================= MAIN =================
+async function generateQuestions(role, level) {
+  const prompt = buildPrompt(role, level);
+
+  try {
+    console.log("⚡ Gemini...");
+    const q = await callGemini(prompt);
+    return { questions: normalizeQuestions(q, level), source: "gemini" };
+
+  } catch (err) {
+    console.warn("Gemini failed:", err.message);
   }
+
+  try {
+    console.log("⚡ HF...");
+    const q = await callHF(prompt);
+    return { questions: normalizeQuestions(q, level), source: "hf" };
+
+  } catch (err) {
+    console.warn("HF failed:", err.message);
+  }
+
+  console.log("⚠️ fallback...");
+  return { questions: fallback(role, level), source: "fallback" };
 }
 
 module.exports = { generateQuestions };
