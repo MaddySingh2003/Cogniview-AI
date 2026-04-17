@@ -1,7 +1,7 @@
 const { generateQuestions } = require("../services/llmService");
 const Session = require("../models/Session");
-const QuestionCache = require("../models/QuestionCache");
 const { v4: uuidv4 } = require("uuid");
+const { evaluateText } = require("../services/mlService");
 
 module.exports = {
 
@@ -10,24 +10,8 @@ module.exports = {
     try {
       const { role, level } = req.body;
 
-      let cache = await QuestionCache.findOne({ role, level });
-
-      let questions;
-
-      if (cache) {
-        console.log("⚡ Using cached questions");
-        questions = cache.questions;
-
-      } else {
-        const result = await generateQuestions(role, level);
-        questions = result.questions;
-
-        if (result.source !== "fallback") {
-          await QuestionCache.create({ role, level, questions });
-        } else {
-          console.log("⚠️ Not caching fallback");
-        }
-      }
+      const result = await generateQuestions(role, level);
+      const questions = result.questions;
 
       const session = new Session({
         sessionId: uuidv4(),
@@ -41,7 +25,7 @@ module.exports = {
 
       res.json({
         sessionId: session.sessionId,
-        question: questions[0],
+        question: questions,
         totalQuestions: questions.length
       });
 
@@ -67,13 +51,16 @@ module.exports = {
 
       let result;
 
+      // ===== TEXT (ML) =====
       if (question.type === "text") {
-        result = {
-          score: 7,
-          feedback: ["Text evaluation placeholder"]
-        };
+        result = await evaluateText(
+          question.question,
+          answer,
+          question.modelAnswer
+        );
       }
 
+      // ===== MCQ =====
       else if (question.type === "mcq") {
         const correct = question.correctAnswer === answer;
 
@@ -83,6 +70,7 @@ module.exports = {
         };
       }
 
+      // ===== MSQ =====
       else if (question.type === "msq") {
         const selected = answer || [];
         const correct = question.correctAnswers || [];
@@ -95,18 +83,23 @@ module.exports = {
         };
       }
 
+      // ===== SAVE =====
       session.answers.push({
+        questionId: question.id,
         question: question.question,
         answer,
         score: result.score,
-        feedback: result.feedback
+        feedback: result.feedback,
+        topic: question.topic
       });
 
       await session.save();
 
+      const nextQuestion = session.questions[index + 1];
+
       res.json({
         result,
-        nextQuestion: session.questions[index + 1],
+        nextQuestion,
         isFinished: index + 1 >= session.questions.length
       });
 
@@ -114,6 +107,27 @@ module.exports = {
       console.error(err);
       res.status(500).json({ error: "Answer failed" });
     }
-  }
+  },
 
+  // ================= RESULT =================
+  getResult: async (req, res) => {
+    try {
+      const session = await Session.findOne({
+        sessionId: req.params.sessionId
+      });
+
+      const scores = session.answers.map(a => a.score);
+
+      const avg =
+        scores.reduce((a, b) => a + b, 0) / scores.length;
+
+      res.json({
+        averageScore: avg.toFixed(2),
+        answers: session.answers
+      });
+
+    } catch (err) {
+      res.status(500).json({ error: "Result failed" });
+    }
+  }
 };

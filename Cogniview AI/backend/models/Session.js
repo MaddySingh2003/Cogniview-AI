@@ -6,12 +6,23 @@ const sessionSchema = new mongoose.Schema({
   level: String,
 
   questions: Array,
-  answers: Array,
+
+  answers: [
+    {
+      questionId: Number,
+      question: String,
+      answer: String,
+      score: Number,
+      feedback: [String],
+      topic: String
+    }
+  ],
 
   createdAt: {
     type: Date,
     default: Date.now,
-    expires: 3600   // ⏱ auto delete after 1 hour
+    expires: 3600   // auto delete after 1 hour
   }
 });
+
 module.exports = mongoose.model("Session", sessionSchema);

@@ -4,8 +4,7 @@ const GEMINI_KEY = process.env.GEMINI_API_KEY;
 const HF_KEY = process.env.HUGGINGFACE_API_KEY;
 
 const GEMINI_MODEL = "gemini-2.5-flash";
-const HF_MODEL = "mistralai/Mistral-7B-Instruct-v0.2";
-
+const HF_MODEL = "google/flan-t5-large";
 // ================= STRICT PROMPT =================
 function buildPrompt(role, level) {
   return `
@@ -119,26 +118,57 @@ async function callGemini(prompt) {
 }
 
 // ================= HF =================
-async function callHF(prompt) {
-  const res = await fetch(
-    `https://api-inference.huggingface.co/models/${HF_MODEL}`,
-    {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${HF_KEY}`,
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify({ inputs: prompt })
+async function callHF(prompt, retries = 4) {
+  for (let i = 0; i < retries; i++) {
+    const res = await fetch(
+      `https://api-inference.huggingface.co/models/${HF_MODEL}`,
+      {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${HF_KEY}`,
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          inputs: prompt,
+          parameters: {
+            max_new_tokens: 800,
+            temperature: 0.3
+          }
+        })
+      }
+    );
+
+    const contentType = res.headers.get("content-type");
+
+    // ❌ HTML → model loading
+    if (!contentType || !contentType.includes("application/json")) {
+      console.warn(`HF HTML response → retry ${i + 1}`);
+      await new Promise(r => setTimeout(r, 4000));
+      continue;
     }
-  );
 
-  const data = await res.json();
+    const data = await res.json();
 
-  if (data.error) throw new Error(data.error);
+    // 🔥 model loading
+    if (data.error?.includes("loading")) {
+      console.warn(`HF loading → retry ${i + 1}`);
+      await new Promise(r => setTimeout(r, 5000));
+      continue;
+    }
 
-  return safeParse(data[0]?.generated_text);
+    if (data.error) {
+      throw new Error(data.error);
+    }
+
+    const text = data[0]?.generated_text;
+
+    if (!text) throw new Error("No HF output");
+
+    return safeParse(text);
+  }
+
+  throw new Error("HF failed after retries");
 }
-
 // ================= FALLBACK =================
 function fallback(role, level) {
   return normalizeQuestions(
@@ -187,8 +217,7 @@ async function generateQuestions(role, level) {
     console.warn("HF failed:", err.message);
   }
 
-  console.log("⚠️ fallback...");
-  return { questions: fallback(role, level), source: "fallback" };
+  throw new Error ("LLM service unavailable");
 }
 
 module.exports = { generateQuestions };
