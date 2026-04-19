@@ -25,7 +25,7 @@ module.exports = {
 
       res.json({
         sessionId: session.sessionId,
-        question: questions[0],
+        question: questions[0], // ✅ only first question
         totalQuestions: questions.length
       });
 
@@ -49,9 +49,28 @@ module.exports = {
       const index = session.answers.length;
       const question = session.questions[index];
 
+      // ✅ CRITICAL FIX
+      if (!question) {
+        return res.status(400).json({
+          error: "No more questions"
+        });
+      }
+
+      // ✅ VALIDATE ANSWER
+      if (
+        answer === undefined ||
+        answer === null ||
+        (typeof answer === "string" && answer.trim() === "") ||
+        (Array.isArray(answer) && answer.length === 0)
+      ) {
+        return res.status(400).json({
+          error: "Answer cannot be empty"
+        });
+      }
+
       let result;
 
-      // ===== TEXT (ML) =====
+      // ===== TEXT =====
       if (question.type === "text") {
         result = await evaluateText(
           question.question,
@@ -66,28 +85,39 @@ module.exports = {
 
         result = {
           score: correct ? 10 : 3,
-          feedback: correct ? ["Correct"] : ["Incorrect"]
+          feedback: correct
+            ? ["Correct answer"]
+            : ["Incorrect, revise concept"]
         };
       }
 
       // ===== MSQ =====
       else if (question.type === "msq") {
-        const selected = answer || [];
+        const selected = Array.isArray(answer) ? answer : [];
         const correct = question.correctAnswers || [];
 
         const match = selected.filter(a => correct.includes(a)).length;
 
+        const score =
+          correct.length === 0
+            ? 0
+            : Math.round((match / correct.length) * 10);
+
         result = {
-          score: Math.round((match / correct.length) * 10),
+          score,
           feedback: ["Partial correctness"]
         };
       }
 
-      // ===== SAVE =====
+      // ✅ FIX: store array safely
+      const storedAnswer = Array.isArray(answer)
+        ? answer.join(", ")
+        : answer;
+
       session.answers.push({
         questionId: question.id,
         question: question.question,
-        answer,
+        answer: storedAnswer,
         score: result.score,
         feedback: result.feedback,
         topic: question.topic
@@ -99,7 +129,7 @@ module.exports = {
 
       res.json({
         result,
-        nextQuestion,
+        nextQuestion: nextQuestion || null,
         isFinished: index + 1 >= session.questions.length
       });
 
@@ -116,17 +146,67 @@ module.exports = {
         sessionId: req.params.sessionId
       });
 
-      const scores = session.answers.map(a => a.score);
+      if (!session) {
+        return res.status(404).json({
+          error: "Session not found"
+        });
+      }
+
+      if (!session.answers.length) {
+        return res.json({
+          averageScore: 0,
+          answers: [],
+          weakAreas: ["No answers"],
+          strongAreas: [],
+          verdict: "No Data"
+        });
+      }
+
+      const scores = session.answers.map(a => a.score || 0);
 
       const avg =
         scores.reduce((a, b) => a + b, 0) / scores.length;
 
+      // ===== TOPIC ANALYSIS =====
+      const topicMap = {};
+
+      session.answers.forEach(a => {
+        const topic = a.topic || "General";
+
+        if (!topicMap[topic]) topicMap[topic] = [];
+        topicMap[topic].push(a.score);
+      });
+
+      const weakAreas = [];
+      const strongAreas = [];
+
+      for (let topic in topicMap) {
+        const tAvg =
+          topicMap[topic].reduce((a, b) => a + b, 0) /
+          topicMap[topic].length;
+
+        if (tAvg <= 4) weakAreas.push(topic);
+        else if (tAvg >= 6) strongAreas.push(topic);
+      }
+
+      if (!weakAreas.length) weakAreas.push("General");
+      if (!strongAreas.length && avg > 5)
+        strongAreas.push("Basic Concepts");
+
+      let verdict = "Needs Improvement";
+      if (avg >= 7) verdict = "Strong Candidate";
+      else if (avg >= 5) verdict = "Average Candidate";
+
       res.json({
         averageScore: avg.toFixed(2),
-        answers: session.answers
+        answers: session.answers,
+        weakAreas,
+        strongAreas,
+        verdict
       });
 
     } catch (err) {
+      console.error(err);
       res.status(500).json({ error: "Result failed" });
     }
   }

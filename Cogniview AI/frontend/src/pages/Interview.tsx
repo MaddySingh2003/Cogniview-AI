@@ -3,103 +3,106 @@ import { useState, useEffect } from "react";
 import { submitAnswer } from "../api/api";
 
 export default function Interview() {
-  const { state } = useLocation();
+  const location = useLocation();
   const navigate = useNavigate();
 
-  const [question, setQuestion] = useState<any>(null);
+  // ✅ SAFE STATE EXTRACTION
+  const sessionId = location.state?.sessionId;
+  const initialQuestion = location.state?.question;
+
+  const [question, setQuestion] = useState<any>(initialQuestion);
   const [answer, setAnswer] = useState<any>("");
 
+  // ❗ CRITICAL: handle page refresh / missing state
   useEffect(() => {
-    if (!state) {
+    if (!sessionId || !initialQuestion) {
+      alert("Session expired. Please start again.");
       navigate("/");
-      return;
     }
-    setQuestion(state.question);
   }, []);
 
-  if (!question) {
-    return <p className="text-center mt-10">Loading...</p>;
-  }
-
   const handleSubmit = async () => {
-    if (!answer || (Array.isArray(answer) && answer.length === 0)) {
-      alert("Please answer the question");
+    // ✅ VALIDATION
+    if (
+      !answer ||
+      (Array.isArray(answer) && answer.length === 0)
+    ) {
+      alert("Please answer before submitting");
       return;
     }
 
-    const res = await submitAnswer({
-      sessionId: state.sessionId,
-      answer
-    });
+    try {
+      const res = await submitAnswer({
+        sessionId,
+        answer
+      });
 
-    if (res.data.isFinished) {
-      navigate("/result", { state: { sessionId: state.sessionId } });
-    } else {
-      setQuestion(res.data.nextQuestion);
-      setAnswer(""); // reset
+      if (res.data.isFinished) {
+        navigate("/result", { state: { sessionId } });
+      } else {
+        setQuestion(res.data.nextQuestion);
+        setAnswer("");
+      }
+
+    } catch (err) {
+      console.error("Submit error:", err);
+      alert("Submission failed");
     }
   };
 
-  // 🔥 Helper for label
-  const getTypeLabel = (type: string) => {
-    if (type === "text") return "Text Question";
-    if (type === "mcq") return "MCQ (Single Choice)";
-    if (type === "msq") return "MSQ (Multiple Choice)";
-    return "Question";
-  };
+  if (!question) return null;
 
   return (
     <div className="flex items-center justify-center h-screen">
       <div className="bg-white/10 backdrop-blur-lg p-8 rounded-2xl w-[600px] shadow-lg">
 
-        {/* TYPE + TOPIC */}
-        <div className="flex justify-between mb-2 text-sm opacity-80">
-          <span>{getTypeLabel(question.type)}</span>
-          <span>{question.topic} • {question.difficulty}</span>
-        </div>
-
         {/* QUESTION */}
-        <h2 className="text-xl font-semibold mb-4">
+        <h2 className="text-xl font-semibold mb-2">
           {question.question}
         </h2>
 
-        {/* ================= TEXT ================= */}
+        {/* TOPIC + TYPE */}
+        <p className="text-sm text-gray-300 mb-4">
+          Topic: {question.topic} | Type: {question.type}
+        </p>
+
+        {/* TEXT */}
         {question.type === "text" && (
           <textarea
             className="w-full p-3 rounded-lg text-black"
-            placeholder="Type your answer..."
             value={answer}
             onChange={(e) => setAnswer(e.target.value)}
           />
         )}
 
-        {/* ================= MCQ ================= */}
+        {/* MCQ */}
         {question.type === "mcq" &&
-          question.options.map((opt: string, i: number) => (
-            <label key={i} className="block mb-2">
+          question.options.map((opt: string) => (
+            <label key={opt} className="block">
               <input
                 type="radio"
                 name="mcq"
-                checked={answer === opt}
                 onChange={() => setAnswer(opt)}
               />{" "}
               {opt}
             </label>
           ))}
 
-        {/* ================= MSQ ================= */}
+        {/* MSQ */}
         {question.type === "msq" &&
-          question.options.map((opt: string, i: number) => (
-            <label key={i} className="block mb-2">
+          question.options.map((opt: string) => (
+            <label key={opt} className="block">
               <input
                 type="checkbox"
-                checked={answer?.includes?.(opt)}
                 onChange={(e) => {
                   if (e.target.checked) {
-                    setAnswer((prev: string[]) => [...(prev || []), opt]);
+                    setAnswer((prev: any) => [
+                      ...(prev || []),
+                      opt
+                    ]);
                   } else {
-                    setAnswer((prev: string[]) =>
-                      prev.filter((a) => a !== opt)
+                    setAnswer((prev: any) =>
+                      prev.filter((x: string) => x !== opt)
                     );
                   }
                 }}
@@ -111,9 +114,9 @@ export default function Interview() {
         {/* SUBMIT */}
         <button
           onClick={handleSubmit}
-          className="mt-6 w-full bg-white text-purple-600 py-3 rounded-lg font-bold"
+          className="mt-4 w-full bg-white text-purple-600 py-3 rounded-lg font-bold"
         >
-          Submit Answer
+          Submit
         </button>
       </div>
     </div>

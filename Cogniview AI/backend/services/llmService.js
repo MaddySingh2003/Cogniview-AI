@@ -84,7 +84,13 @@ function normalizeQuestions(questions, level) {
       type: q.type || "text",
       question: q.question || "Sample question",
       modelAnswer: q.modelAnswer || "",
-      topic: q.topic || "General",
+      topic:
+  q.topic ||
+  (q.type === "text"
+    ? "Concept"
+    : q.type === "mcq"
+    ? "Theory"
+    : "Application"),
       difficulty: q.difficulty || level,
       options: q.options || [],
       correctAnswer: q.correctAnswer || null,
