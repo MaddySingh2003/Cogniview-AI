@@ -11,7 +11,7 @@ const sessionSchema = new mongoose.Schema({
     {
       questionId: Number,
       question: String,
-      answer: String,
+      answer: mongoose.Schema.Types.Mixed,
       score: Number,
       feedback: [String],
       topic: String

@@ -25,7 +25,7 @@ module.exports = {
 
       res.json({
         sessionId: session.sessionId,
-        question: questions,
+        question: questions[0],
         totalQuestions: questions.length
       });
 

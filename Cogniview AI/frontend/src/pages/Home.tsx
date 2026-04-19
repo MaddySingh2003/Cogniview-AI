@@ -8,7 +8,7 @@ export default function Home() {
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
 
-   const handleStart = async () => {
+  const handleStart = async () => {
     try {
       setLoading(true);
 
@@ -28,47 +28,54 @@ export default function Home() {
 
     } finally {
       setLoading(false);
-    }};
+    }
+  };
 
   return (
     <div className="flex items-center justify-center h-screen">
       <div className="bg-white/10 backdrop-blur-lg p-8 rounded-2xl shadow-lg w-[400px]">
+
         <h1 className="text-3xl font-bold text-center mb-6">
           AI Interview
         </h1>
 
-        <div className="space-y-4">
-          <select
-            className="w-full p-3 rounded-lg text-black"
-            onChange={(e) => setRole(e.target.value)}
-          >
-            <option value="backend">Backend</option>
-            <option value="frontend">Frontend</option>
-            <option value="data-science">Data Science</option>
-          </select>
+        {loading ? (
+          <div className="text-center">
+            <p className="text-lg animate-pulse">
+              Generating your interview...
+            </p>
+            <p className="text-sm mt-2 opacity-70">
+              This may take a few seconds
+            </p>
+          </div>
+        ) : (
+          <div className="space-y-4">
+            <select
+              className="w-full p-3 rounded-lg text-black"
+              onChange={(e) => setRole(e.target.value)}
+            >
+              <option value="backend">Backend</option>
+              <option value="frontend">Frontend</option>
+              <option value="data-science">Data Science</option>
+            </select>
 
-          <select
-            className="w-full p-3 rounded-lg text-black"
-            onChange={(e) => setLevel(e.target.value)}
-          >
-            <option value="easy">Beginner</option>
-            <option value="medium">Intermediate</option>
-            <option value="hard">Advanced</option>
-          </select>
+            <select
+              className="w-full p-3 rounded-lg text-black"
+              onChange={(e) => setLevel(e.target.value)}
+            >
+              <option value="easy">Beginner</option>
+              <option value="medium">Intermediate</option>
+              <option value="hard">Advanced</option>
+            </select>
 
-          <button
-        onClick={handleStart}
-        disabled={loading}
-        style={{
-          padding: "10px 20px",
-          backgroundColor: loading ? "gray" : "blue",
-          color: "white",
-          cursor: loading ? "not-allowed" : "pointer"
-        }}
-      >
-        {loading ? "Please wait..." : "Start Interview"}
-      </button>
-        </div>
+            <button
+              onClick={handleStart}
+              className="w-full bg-white text-purple-600 py-3 rounded-lg font-bold"
+            >
+              Start Interview
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );
