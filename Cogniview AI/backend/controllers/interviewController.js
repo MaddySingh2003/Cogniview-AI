@@ -14,12 +14,13 @@ module.exports = {
       const questions = result.questions;
 
       const session = new Session({
-        sessionId: uuidv4(),
-        role,
-        level,
-        questions,
-        answers: []
-      });
+  sessionId: uuidv4(),
+  userId: req.userId, // ✅ LINK USER
+  role,
+  level,
+  questions,
+  answers: []
+});
 
       await session.save();
 
