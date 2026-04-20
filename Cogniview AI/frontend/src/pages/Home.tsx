@@ -8,88 +8,69 @@ export default function Home() {
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
 
- const handleStart = async () => {
-  try {
-    setLoading(true);
+  const handleStart = async () => {
+    try {
+      setLoading(true);
+      const res = await startInterview({ role, level });
 
-    const token = localStorage.getItem("token");
+      navigate("/interview", {
+        state: {
+          sessionId: res.data.sessionId,
+          question: res.data.question
+        }
+      });
 
-    if (!token) {
-      alert("Please login first");
-      navigate("/auth");
-      return;
-    }
-
-    const res = await startInterview({ role, level });
-
-    navigate("/interview", {
-      state: {
-        sessionId: res.data.sessionId,
-        question: res.data.question,
-        total: res.data.totalQuestions
+    } catch (err: any) {
+      if (err.response?.status === 401) {
+        localStorage.removeItem("token");
+        navigate("/auth");
+      } else {
+        alert("Server busy");
       }
-    });
-
-  } catch (err: any) {
-    console.error(err);
-
-    if (err.response?.status === 401) {
-      alert("Session expired. Login again.");
-      localStorage.removeItem("token");
-      navigate("/auth");
-    } else {
-      alert("Server busy. Try again.");
+    } finally {
+      setLoading(false);
     }
+  };
 
-  } finally {
-    setLoading(false);
-  }
-};
   return (
-    <div className="flex items-center justify-center h-screen">
+    <div className="flex flex-col items-center justify-center text-center px-6 py-20">
+
+      <h1 className="text-5xl font-bold mb-6 bg-gradient-to-r from-purple-400 to-pink-500 bg-clip-text text-transparent">
+        AI Interview Simulator
+      </h1>
+
+      <p className="text-gray-400 max-w-xl mb-10">
+        Practice real interview questions powered by AI. Get instant feedback, scoring, and improvement insights.
+      </p>
+
       <div className="bg-white/10 backdrop-blur-lg p-8 rounded-2xl shadow-lg w-[400px]">
 
-        <h1 className="text-3xl font-bold text-center mb-6">
-          AI Interview
-        </h1>
+        <select
+          className="w-full p-3 mb-4 rounded-lg text-black"
+          onChange={(e) => setRole(e.target.value)}
+        >
+          <option value="backend">Backend</option>
+          <option value="frontend">Frontend</option>
+          <option value="data-science">Data Science</option>
+        </select>
 
-        {loading ? (
-          <div className="text-center">
-            <p className="text-lg animate-pulse">
-              Generating your interview...
-            </p>
-            <p className="text-sm mt-2 opacity-70">
-              This may take a few seconds
-            </p>
-          </div>
-        ) : (
-          <div className="space-y-4">
-            <select
-              className="w-full p-3 rounded-lg text-black"
-              onChange={(e) => setRole(e.target.value)}
-            >
-              <option value="backend">Backend</option>
-              <option value="frontend">Frontend</option>
-              <option value="data-science">Data Science</option>
-            </select>
+        <select
+          className="w-full p-3 mb-6 rounded-lg text-black"
+          onChange={(e) => setLevel(e.target.value)}
+        >
+          <option value="easy">Beginner</option>
+          <option value="medium">Intermediate</option>
+          <option value="hard">Advanced</option>
+        </select>
 
-            <select
-              className="w-full p-3 rounded-lg text-black"
-              onChange={(e) => setLevel(e.target.value)}
-            >
-              <option value="easy">Beginner</option>
-              <option value="medium">Intermediate</option>
-              <option value="hard">Advanced</option>
-            </select>
+        <button
+          onClick={handleStart}
+          disabled={loading}
+          className="w-full py-3 rounded-lg font-bold bg-gradient-to-r from-purple-500 to-pink-500 hover:scale-105 transition"
+        >
+          {loading ? "Generating AI Interview..." : "Start Interview"}
+        </button>
 
-            <button
-              onClick={handleStart}
-              className="w-full bg-white text-purple-600 py-3 rounded-lg font-bold"
-            >
-              Start Interview
-            </button>
-          </div>
-        )}
       </div>
     </div>
   );
