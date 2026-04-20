@@ -1,29 +1,35 @@
 import axios from "axios";
 
-// ================= API INSTANCE =================
 const API = axios.create({
   baseURL: "http://localhost:3001"
 });
 
-// ================= TYPES =================
+// ✅ attach token automatically
+API.interceptors.request.use((config) => {
+  const token = localStorage.getItem("token");
 
-export interface StartInterviewRequest {
-  role: string;
-  level: string;
-}
+  if (token) {
+    config.headers.Authorization = token;
+  }
 
-export interface SubmitAnswerRequest {
-  sessionId: string;
-  answer: string | string[];
-}
+  return config;
+});
 
-// ================= API FUNCTIONS =================
+// ================= APIs =================
 
-export const startInterview = (data: StartInterviewRequest) =>
+export const startInterview = (data: any) =>
   API.post("/start", data);
 
-export const submitAnswer = (data: SubmitAnswerRequest) =>
+export const submitAnswer = (data: any) =>
   API.post("/answer", data);
 
 export const getResult = (sessionId: string) =>
   API.get(`/result/${sessionId}`);
+
+export const login = (data: any) =>
+  API.post("/auth/login", data);
+
+export const register = (data: any) =>
+  API.post("/auth/register", data);
+
+export default API;
