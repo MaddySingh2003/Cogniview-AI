@@ -8,29 +8,43 @@ export default function Home() {
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
 
-  const handleStart = async () => {
-    try {
-      setLoading(true);
+ const handleStart = async () => {
+  try {
+    setLoading(true);
 
-      const res = await startInterview({ role, level });
+    const token = localStorage.getItem("token");
 
-      navigate("/interview", {
-        state: {
-          sessionId: res.data.sessionId,
-          question: res.data.question,
-          total: res.data.totalQuestions
-        }
-      });
-
-    } catch (err) {
-      alert("Server busy. Try again later.");
-      console.error(err);
-
-    } finally {
-      setLoading(false);
+    if (!token) {
+      alert("Please login first");
+      navigate("/auth");
+      return;
     }
-  };
 
+    const res = await startInterview({ role, level });
+
+    navigate("/interview", {
+      state: {
+        sessionId: res.data.sessionId,
+        question: res.data.question,
+        total: res.data.totalQuestions
+      }
+    });
+
+  } catch (err: any) {
+    console.error(err);
+
+    if (err.response?.status === 401) {
+      alert("Session expired. Login again.");
+      localStorage.removeItem("token");
+      navigate("/auth");
+    } else {
+      alert("Server busy. Try again.");
+    }
+
+  } finally {
+    setLoading(false);
+  }
+};
   return (
     <div className="flex items-center justify-center h-screen">
       <div className="bg-white/10 backdrop-blur-lg p-8 rounded-2xl shadow-lg w-[400px]">

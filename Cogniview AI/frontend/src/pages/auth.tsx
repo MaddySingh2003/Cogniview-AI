@@ -11,27 +11,23 @@ export default function Auth() {
 
   const navigate = useNavigate();
 
-  const handleSubmit = async () => {
-    try {
-      if (isLogin) {
-        const res = await login({ email, password });
+ const handleSubmit = async () => {
+  try {
+    const res = await login({
+      email: email.trim(),
+      password: password.trim()
+    });
 
-        localStorage.setItem("token", res.data.token);
+    localStorage.setItem("token", res.data.token);
+    console.log("TOKEN SAVED:", res.data.token);
 
-        navigate("/");
+    navigate("/");
 
-      } else {
-        await register({ name, email, password });
-
-        alert("Registered successfully. Please login.");
-        setIsLogin(true);
-      }
-
-    } catch (err) {
-      console.error(err);
-      alert("Auth failed");
-    }
-  };
+  } catch (err: any) {
+    console.error(err.response?.data || err.message);
+    alert(err.response?.data?.error || "Login failed");
+  }
+};
 
   return (
     <div className="flex items-center justify-center h-screen">
