@@ -3,7 +3,7 @@ const mongoose = require("mongoose");
 const answerSchema = new mongoose.Schema({
   questionId: Number,
   question: String,
-  answer: String,
+  answer: mongoose.Schema.Types.Mixed,
   score: Number,
   feedback: [String],
   topic: String
@@ -11,17 +11,18 @@ const answerSchema = new mongoose.Schema({
 
 const sessionSchema = new mongoose.Schema({
   sessionId: String,
-  userId: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: "User"
-  },
+  userId: String, // ✅ NEW
+
   role: String,
   level: String,
+
   questions: Array,
   answers: [answerSchema],
+
   createdAt: {
     type: Date,
-    default: Date.now
+    default: Date.now,
+    expires: 60 * 60 * 24 * 30 // ✅ 30 days auto delete
   }
 });
 

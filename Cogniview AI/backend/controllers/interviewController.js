@@ -7,34 +7,44 @@ module.exports = {
 
   // ================= START =================
   startInterview: async (req, res) => {
-    try {
-      const { role, level } = req.body;
+  try {
+    const { role, level } = req.body;
+    const userId = req.user.userId; // ✅ from JWT
 
-      const result = await generateQuestions(role, level);
-      const questions = result.questions;
+    const result = await generateQuestions(role, level);
 
-      const session = new Session({
-  sessionId: uuidv4(),
-  userId: req.userId, // ✅ LINK USER
-  role,
-  level,
-  questions,
-  answers: []
-});
+    const session = new Session({
+      sessionId: uuidv4(),
+      userId, // ✅ attach user
+      role,
+      level,
+      questions: result.questions,
+      answers: []
+    });
 
-      await session.save();
+    await session.save();
 
-      res.json({
-        sessionId: session.sessionId,
-        question: questions[0], // ✅ only first question
-        totalQuestions: questions.length
-      });
+    // ✅ KEEP ONLY LAST 5
+    const sessions = await Session.find({ userId })
+      .sort({ createdAt: -1 });
 
-    } catch (err) {
-      console.error(err);
-      res.status(500).json({ error: "Start failed" });
+    if (sessions.length > 5) {
+      const extra = sessions.slice(5);
+      const ids = extra.map(s => s._id);
+      await Session.deleteMany({ _id: { $in: ids } });
     }
-  },
+
+    res.json({
+      sessionId: session.sessionId,
+      question: result.questions[0],
+      totalQuestions: result.questions.length
+    });
+
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Start failed" });
+  }
+},
 
   // ================= ANSWER =================
   submitAnswer: async (req, res) => {
@@ -144,7 +154,8 @@ module.exports = {
   getResult: async (req, res) => {
     try {
       const session = await Session.findOne({
-        sessionId: req.params.sessionId
+       sessionId: req.params.sessionId,
+  userId: req.user.userId //
       });
 
       if (!session) {

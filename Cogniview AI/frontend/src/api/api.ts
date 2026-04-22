@@ -29,5 +29,7 @@ export const login = (data: any) =>
 
 export const register = (data: any) =>
   API.post("/auth/register", data);
+export const getHistory=()=>
+  API.get("/history");
 
 export default API;

@@ -19,6 +19,14 @@ export default function Navbar() {
         Cogniview AI
       </h1>
 
+<button onClick={()=>navigate("/")}>
+  Home
+</button>
+      <button onClick={() => navigate("/history")}>
+  History
+</button>
+
+
       <div className="space-x-4">
         {token ? (
           <button
@@ -34,6 +42,7 @@ export default function Navbar() {
           >
             Login
           </button>
+          
         )}
       </div>
     </div>

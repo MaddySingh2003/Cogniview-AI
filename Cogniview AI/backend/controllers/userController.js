@@ -1,14 +1,19 @@
 const Session=require("../models/Session");
 
 module.exports={
-    getHistory:async(req,res)=>{
-        try{
-            const session=await Session.find({
-                userId:req.userId
-            }).sort({createdAt:-1});
-            res.json(session);
-        }catch(err){
-            res.status(500).json({error:"Failed to fetch"});
-        }
-    }
+   getHistory: async (req, res) => {
+  try {
+    const userId = req.user.userId;
+
+    const sessions = await Session.find({ userId })
+      .sort({ createdAt: -1 })
+      .limit(5)
+      .select("sessionId role level createdAt");
+
+    res.json(sessions);
+
+  } catch (err) {
+    res.status(500).json({ error: "History failed" });
+  }
+}
 }

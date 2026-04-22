@@ -4,19 +4,27 @@ const JWT_SECRET = "secret123";
 
 module.exports = (req, res, next) => {
   try {
-    const token = req.headers.authorization?.split(" ")[1];
+    const authHeader = req.headers.authorization;
+
+    if (!authHeader) {
+      return res.status(401).json({ error: "No token" });
+    }
+
+    const token = authHeader.split(" ")[1];
 
     if (!token) {
-      return res.status(401).json({ error: "No token" });
+      return res.status(401).json({ error: "Invalid token format" });
     }
 
     const decoded = jwt.verify(token, JWT_SECRET);
 
-    req.userId = decoded.userId;
+    // ✅ FIX HERE
+    req.user = decoded; 
 
     next();
 
   } catch (err) {
+    console.error("AUTH ERROR:", err.message);
     res.status(401).json({ error: "Invalid token" });
   }
 };
