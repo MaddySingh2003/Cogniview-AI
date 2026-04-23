@@ -145,9 +145,11 @@ export default function Result() {
 
                 {/* FEEDBACK */}
                 {a.feedback && (
-                  <p className="text-xs text-purple-300 mt-2">
-                    💡 {a.feedback.join(", ")}
-                  </p>
+                 <p className="text-yellow-300 text-sm mt-2">
+  {a.feedback?.map((f: string, idx: number) => (
+    <div key={idx}>• {f}</div>
+  ))}
+</p>
                 )}
 
               </div>
