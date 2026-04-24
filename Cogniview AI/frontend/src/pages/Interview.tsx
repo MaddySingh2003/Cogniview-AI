@@ -9,6 +9,7 @@ export default function Interview() {
   const [question, setQuestion] = useState(state?.question);
   const [answer, setAnswer] = useState<any>("");
   const [loading, setLoading] = useState(false);
+  
 
   const sessionId = state?.sessionId;
 

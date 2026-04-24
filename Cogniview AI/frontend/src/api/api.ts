@@ -15,9 +15,15 @@ API.interceptors.request.use((config) => {
   return config;
 });
 
-export const startInterview = (data: any) =>
-  API.post("/start", data);
+export const startInterview = (data: any) => {
+  const isFormData = data instanceof FormData;
 
+  return API.post("/start", data, {
+    headers: isFormData
+      ? { "Content-Type": "multipart/form-data" }
+      : {}
+  });
+};
 export const submitAnswer = (data: any) =>
   API.post("/answer", data);
 

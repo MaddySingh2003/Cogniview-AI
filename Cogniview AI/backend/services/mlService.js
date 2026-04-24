@@ -3,12 +3,10 @@ const axios = require("axios");
 function generateFeedback({ answer, modelAnswer, score, semantic }) {
   const feedback = [];
 
-  // length check
   if (answer.length < 20) {
     feedback.push("Answer is too short. Add more explanation.");
   }
 
-  // semantic understanding
   if (semantic < 0.4) {
     feedback.push("Answer is not aligned with the question.");
   } else if (semantic < 0.7) {
@@ -17,7 +15,6 @@ function generateFeedback({ answer, modelAnswer, score, semantic }) {
     feedback.push("Good conceptual understanding.");
   }
 
-  // keyword coverage
   const keywords = modelAnswer
     ? modelAnswer.toLowerCase().split(" ").slice(0, 10)
     : [];
@@ -36,7 +33,6 @@ function generateFeedback({ answer, modelAnswer, score, semantic }) {
     }
   }
 
-  // score-based insight
   if (score >= 8) {
     feedback.push("Strong answer.");
   } else if (score >= 5) {
@@ -52,7 +48,8 @@ async function evaluateText(question, answer, modelAnswer) {
   try {
     const res = await axios.post("http://localhost:8000/predict", {
       question,
-      answer
+      answer,
+      model_answer: modelAnswer   // ✅ FIXED
     });
 
     const data = res.data;
@@ -73,11 +70,11 @@ async function evaluateText(question, answer, modelAnswer) {
     };
 
   } catch (err) {
-    console.error("ML ERROR", err.message);
+    console.error("ML ERROR", err.response?.data || err.message);
 
     return {
       score: 5,
-      feedback: ["Fallback evaluation"]
+      feedback: ["Fallback evaluation (ML failed)"]
     };
   }
 }

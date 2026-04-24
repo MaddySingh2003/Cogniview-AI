@@ -8,6 +8,7 @@ export default function Home() {
   const [role, setRole] = useState("backend");
   const [level, setLevel] = useState("easy");
   const [loading, setLoading] = useState(false);
+  const [resume, setResume] = useState<File | null>(null);
 
   const handleStart = async () => {
     try {
@@ -121,6 +122,24 @@ export default function Home() {
               <option value="hard">Advanced</option>
             </select>
           </div>
+          <div className="mb-4 text-left">
+  <label className="block text-sm text-gray-400 mb-2">
+    Upload Resume (optional)
+  </label>
+
+  <input
+    type="file"
+    accept=".pdf"
+    onChange={(e) => setResume(e.target.files?.[0] || null)}
+    className="w-full text-sm text-gray-300 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:bg-gradient-to-r file:from-[#E83464] file:to-[#8E2DE2] file:text-white hover:file:opacity-90"
+  />
+
+  {resume && (
+    <p className="text-xs mt-2 text-green-400">
+      Selected: {resume.name}
+    </p>
+  )}
+</div>
 
           {/* 🔥 PREMIUM BUTTON */}
           <button

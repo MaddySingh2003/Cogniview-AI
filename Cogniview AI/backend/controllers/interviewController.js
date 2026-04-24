@@ -2,20 +2,43 @@ const { generateQuestions } = require("../services/llmService");
 const Session = require("../models/Session");
 const { v4: uuidv4 } = require("uuid");
 const { evaluateText } = require("../services/mlService");
+const odfParser=require("pdf-parse");
+const { extractText } = require("../services/resumeParser");
+
 
 module.exports = {
 
   // ================= START =================
-  startInterview: async (req, res) => {
+ 
+startInterview: async (req, res) => {
   try {
     const { role, level } = req.body;
-    const userId = req.user.userId; // ✅ from JWT
+    const userId = req.user.userId;
 
-    const result = await generateQuestions(role, level);
+    let resumeText = "";
+
+    // ✅ HANDLE OPTIONAL RESUME
+    if (req.file) {
+      console.log("📄 Resume uploaded");
+
+      resumeText = await extractText(req.file.buffer);
+
+      if (!resumeText || resumeText.length < 50) {
+        console.warn("⚠️ Resume too small or empty");
+        resumeText = "";
+      }
+    }
+
+    // ✅ PASS RESUME TEXT
+    const result = await generateQuestions(
+      role,
+      level,
+      resumeText
+    );
 
     const session = new Session({
       sessionId: uuidv4(),
-      userId, // ✅ attach user
+      userId,
       role,
       level,
       questions: result.questions,
@@ -30,8 +53,9 @@ module.exports = {
 
     if (sessions.length > 5) {
       const extra = sessions.slice(5);
-      const ids = extra.map(s => s._id);
-      await Session.deleteMany({ _id: { $in: ids } });
+      await Session.deleteMany({
+        _id: { $in: extra.map(s => s._id) }
+      });
     }
 
     res.json({
@@ -41,7 +65,7 @@ module.exports = {
     });
 
   } catch (err) {
-    console.error(err);
+    console.error("START ERROR:", err);
     res.status(500).json({ error: "Start failed" });
   }
 },

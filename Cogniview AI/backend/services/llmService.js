@@ -6,7 +6,53 @@ const HF_KEY = process.env.HUGGINGFACE_API_KEY;
 const GEMINI_MODEL = "gemini-2.5-flash";
 const HF_MODEL = "google/flan-t5-large";
 // ================= STRICT PROMPT =================
-function buildPrompt(role, level) {
+function buildPrompt(role, level, resumeText) {
+  if (resumeText) {
+    return `
+You are an AI interviewer.
+
+Generate EXACTLY 15 interview questions STRICTLY in JSON array format.
+
+Based ONLY on this resume:
+${resumeText}
+
+RULES:
+- Focus on projects, skills, tools
+- Include practical + conceptual questions
+- Maintain mix:
+  • 5 TEXT
+  • 5 MCQ
+  • 5 MSQ
+
+FORMAT:
+
+TEXT:
+{
+ "type":"text",
+ "question":"...",
+ "modelAnswer":"...",
+ "topic":"..."
+}
+
+MCQ:
+{
+ "type":"mcq",
+ "question":"...",
+ "options":["A","B","C","D"],
+ "correctAnswer":"A"
+}
+
+MSQ:
+{
+ "type":"msq",
+ "question":"...",
+ "options":["A","B","C","D"],
+ "correctAnswers":["A","C"]
+}
+
+Return ONLY JSON.
+`;
+  }
   return `
 You are an AI interviewer.
 
@@ -16,43 +62,53 @@ Role: ${role}
 Level: ${level}
 
 RULES:
-- Return ONLY JSON (no text, no explanation)
-- Must be ARRAY of 15 objects
+- Return ONLY JSON array (no text, no explanation)
+- Must be EXACTLY 15 objects
 
 STRUCTURE:
 
 TEXT:
 {
-  "type": "text",
-  "question": "...",
-  "modelAnswer": "...",
-  "topic": "...",
-  "difficulty": "${level}"
+ "type":"text",
+ "question":"...",
+ "modelAnswer":"...",
+ "topic":"..."
 }
 
 MCQ:
 {
-  "type": "mcq",
-  "question": "...",
-  "options": ["A","B","C","D"],
-  "correctAnswer": "A"
+ "type":"mcq",
+ "question":"...",
+ "options":["A","B","C","D"],
+ "correctAnswer":"A"
 }
 
 MSQ:
 {
-  "type": "msq",
-  "question": "...",
-  "options": ["A","B","C","D"],
-  "correctAnswers": ["A","C"]
+ "type":"msq",
+ "question":"...",
+ "options":["A","B","C","D"],
+ "correctAnswers":["A","C"]
 }
 
 DISTRIBUTION:
-- 5 text
-- 5 mcq
-- 5 msq
+- 5 TEXT
+- 5 MCQ
+- 5 MSQ
+`;
+
+  // existing fallback
+  return `
+You are an AI interviewer.
+
+Generate EXACTLY 15 questions.
+
+Role: ${role}
+Level: ${level}
+
+(return JSON...)
 `;
 }
-
 // ================= PARSER =================
 function safeParse(text) {
   const cleaned = text
@@ -202,8 +258,8 @@ function fallback(role, level) {
 }
 
 // ================= MAIN =================
-async function generateQuestions(role, level) {
-  const prompt = buildPrompt(role, level);
+async function generateQuestions(role, level,resumeText="") {
+  const prompt = buildPrompt(role, level,resumeText);
 
   try {
     console.log("⚡ Gemini...");
