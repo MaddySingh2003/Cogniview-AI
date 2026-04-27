@@ -11,6 +11,9 @@ import Profile from "./pages/Profile";
 import Dashboard from "./pages/Dashboard";
 import Vision from "./pages/Vision"
 import Background from "./components/Background";
+import Features  from "./pages/Features";
+import CTA from "./pages/CTA";
+import Interface from "./pages/Interface";
 
 export default function App() {
   return (
@@ -33,6 +36,9 @@ export default function App() {
         </main>
         
    <Vision/>
+   <Features/>
+   <Interface/>
+   <CTA/>
         {/* FOOTER ALWAYS AT BOTTOM */}
         <Footer />
     
