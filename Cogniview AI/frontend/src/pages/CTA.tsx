@@ -4,7 +4,7 @@ export default function CTA() {
   const navigate = useNavigate();
 
   return (
-    <section className="py-28 px-6 bg-[#7070af]">
+    <section className="py-28 px-6 bg-[#8989bb]">
 
       <div className="max-w-[1100px] mx-auto">
 
