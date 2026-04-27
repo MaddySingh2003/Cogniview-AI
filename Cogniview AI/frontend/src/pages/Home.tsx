@@ -8,12 +8,11 @@ export default function Home() {
   const [role, setRole] = useState("backend");
   const [level, setLevel] = useState("easy");
   const [loading, setLoading] = useState(false);
-  const [resume, setResume] = useState<File | null>(null);
+  const [resume, setResume] = useState(null);
 
   const handleStart = async () => {
     try {
       setLoading(true);
-
       const res = await startInterview({ role, level });
 
       navigate("/interview", {
@@ -22,33 +21,25 @@ export default function Home() {
           question: res.data.question
         }
       });
-
-    } catch (err: any) {
-      if (err.response?.status === 401) {
-        localStorage.removeItem("token");
-        navigate("/auth");
-      } else {
-        alert("Server busy. Try again.");
-      }
+    } catch {
+      alert("Server busy. Try again.");
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="min-h-screen w-full bg-[#070B14] text-white relative overflow-hidden">
+    <div className="min-h-screen text-white relative overflow-hidden">
 
-      {/* BACKGROUND */}
-      <div className="absolute inset-0 opacity-20 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjAiIGhlaWdodD0iNjAiIHZpZXdCb3g9IjAgMCA2MCA2MCI+PC9zdmc+')]" />
-
-      <div className="absolute top-[-200px] left-[-200px] w-[500px] h-[500px] bg-purple-600 opacity-20 blur-[120px] rounded-full" />
-      <div className="absolute bottom-[-200px] right-[-200px] w-[500px] h-[500px] bg-pink-600 opacity-20 blur-[120px] rounded-full" />
+      {/* OVERLAY */}
+      <div className="absolute inset-0 z-0" />
 
       {/* HERO */}
-      <div className="max-w-[1400px] mx-auto px-6 md:px-16 pt-28 grid lg:grid-cols-2 gap-16 items-center relative z-10">
+      <div className="max-w-[1400px] mx-auto px-6 md:px-16 pt-28 grid lg:grid-cols-2 gap-16 items-start relative z-10">
 
+        {/* LEFT */}
         <div>
-          <h1 className="text-5xl sm:text-6xl lg:text-[72px] font-bold leading-tight mb-6">
+          <h1 className="text-5xl md:text-6xl lg:text-[72px] font-bold leading-tight">
             Practice real <br />
             <span className="bg-gradient-to-r from-[#E83464] to-[#8E2DE2] bg-clip-text text-transparent">
               AI-powered
@@ -56,124 +47,153 @@ export default function Home() {
             interviews
           </h1>
 
-          <p className="text-gray-400 text-lg mb-10 max-w-lg">
+          <p className="text-gray-300 text-lg mt-6 max-w-lg">
             Experience realistic interview scenarios powered by AI.
             Get instant evaluation, detailed feedback, and track your growth.
           </p>
 
-          <button
-            onClick={() => navigate("/learn-more")}
-            className="px-8 py-3.5 rounded-full bg-gradient-to-r from-[#E83464] to-[#8E2DE2] text-white font-semibold text-lg hover:opacity-90 transition-all shadow-[0_0_30px_rgba(232,52,100,0.3)]"
-          >
-            Learn more
-          </button>
+          <div className="flex gap-4 mt-8">
+            <button
+              onClick={() => navigate("/learn-more")}
+              className="px-8 py-3 rounded-full bg-gradient-to-r from-[#E83464] to-[#8E2DE2] font-semibold shadow-lg"
+            >
+              Learn more
+            </button>
 
-          <button
-            onClick={() => navigate("/dashboard")}
-            className="mt-6 px-8 py-3 rounded-full bg-white text-black font-semibold hover:bg-gray-200 transition"
-          >
-            View Dashboard
-          </button>
-        </div>
-
-        {/* RIGHT IMAGE */}
-        <div className="relative h-[500px] lg:h-[650px]">
-          <img
-            src="/hero-image.png"
-            alt="AI Interview"
-            className="w-full h-full object-cover rounded-[2rem] shadow-2xl"
-          />
-
-          <div className="absolute bottom-6 left-6 bg-black/60 backdrop-blur-lg p-4 rounded-xl border border-white/10">
-            <p className="text-sm text-gray-300">Live AI Evaluation</p>
-            <p className="text-lg font-semibold text-white">Score: 8.5 / 10</p>
+            <button
+              onClick={() => navigate("/dashboard")}
+              className="px-8 py-3 rounded-full bg-white text-black font-semibold"
+            >
+              Dashboard
+            </button>
           </div>
         </div>
 
+        {/* RIGHT SIDE (NEW — FILLED PROPERLY) */}
+        <div className="relative mt-10 space-y-6">
+
+          {/* FEATURE CARDS */}
+          <div className="grid grid-cols-2 gap-4">
+            <div className="bg-white/10 backdrop-blur-xl border border-white/20 p-4 rounded-xl">
+              <p className="text-xs text-gray-400">AI Accuracy</p>
+              <p className="text-2xl font-bold">94%</p>
+            </div>
+
+            <div className="bg-white/10 backdrop-blur-xl border border-white/20 p-4 rounded-xl">
+              <p className="text-xs text-gray-400">Sessions</p>
+              <p className="text-2xl font-bold">120+</p>
+            </div>
+          </div>
+
+          {/* ACTIVITY PREVIEW */}
+          <div className="bg-white/10 backdrop-blur-xl border border-white/20 p-5 rounded-2xl">
+            <p className="text-sm text-gray-300 mb-3">Recent Performance</p>
+
+            <div className="space-y-2">
+              <div className="flex justify-between text-sm">
+                <span>Backend Interview</span>
+                <span className="text-green-400">8.5</span>
+              </div>
+              <div className="flex justify-between text-sm">
+                <span>System Design</span>
+                <span className="text-yellow-400">7.2</span>
+              </div>
+              <div className="flex justify-between text-sm">
+                <span>DSA Round</span>
+                <span className="text-red-400">6.1</span>
+              </div>
+            </div>
+          </div>
+
+          {/* QUICK INFO */}
+          <div className="bg-gradient-to-r from-[#E83464]/20 to-[#8E2DE2]/20 border border-white/10 p-5 rounded-2xl">
+            <p className="text-sm text-gray-200">
+              Improve faster with adaptive AI-driven insights and personalized feedback.
+            </p>
+          </div>
+
+        </div>
       </div>
 
-      {/* CTA SECTION */}
-      <div className="mt-32 text-center pb-20 max-w-xl mx-auto px-6">
-
-        <h2 className="text-3xl font-bold mb-6">
-          Ready to improve your interview skills?
+      {/* BOTTOM SECTION (UNCHANGED POSITION — BUT IMPROVED) */}
+      <div className="mt-32 pb-20 text-center relative z-10">
+        <h2 className="text-3xl font-bold mb-10">
+          Train smarter. Get hired faster.
         </h2>
 
-        <div className="bg-white/5 border border-white/10 backdrop-blur-xl p-6 rounded-2xl shadow-xl">
+        <div className="relative max-w-xl mx-auto">
 
-          <div className="flex gap-4 mb-6">
-            <select
-              value={role}
-              onChange={(e) => setRole(e.target.value)}
-              className="w-1/2 p-3 rounded-lg text-blue-400"
-            >
-              <option value="backend">Backend</option>
-              <option value="frontend">Frontend</option>
-              <option value="data-science">Data Science</option>
-            </select>
+          <div className="bg-white/10 backdrop-blur-xl border border-white/20 rounded-3xl p-8 shadow-2xl">
 
-            <select
-              value={level}
-              onChange={(e) => setLevel(e.target.value)}
-              className="w-1/2 p-3 rounded-lg text-blue-400"
-            >
-              <option value="easy">Beginner</option>
-              <option value="medium">Intermediate</option>
-              <option value="hard">Advanced</option>
-            </select>
-          </div>
-          <div className="mb-4 text-left">
-  <label className="block text-sm text-gray-400 mb-2">
-    Upload Resume (optional)
-  </label>
+            <div className="mb-6 text-left">
+              <h3 className="text-xl font-semibold">AI Interview Setup</h3>
+              <p className="text-sm text-gray-300">
+                Customize your interview before starting
+              </p>
+            </div>
 
-  <input
-    type="file"
-    accept=".pdf"
-    onChange={(e) => setResume(e.target.files?.[0] || null)}
-    className="w-full text-sm text-gray-300 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:bg-gradient-to-r file:from-[#E83464] file:to-[#8E2DE2] file:text-white hover:file:opacity-90"
-  />
+            <div className="flex gap-4 mb-6">
+              <select
+                value={role}
+                onChange={(e) => setRole(e.target.value)}
+                className="w-1/2 p-3 rounded-lg bg-black/40 text-white"
+              >
+                <option value="backend">Backend</option>
+                <option value="frontend">Frontend</option>
+                <option value="data-science">Data Science</option>
+              </select>
 
-  {resume && (
-    <p className="text-xs mt-2 text-green-400">
-      Selected: {resume.name}
-    </p>
-  )}
-</div>
+              <select
+                value={level}
+                onChange={(e) => setLevel(e.target.value)}
+                className="w-1/2 p-3 rounded-lg bg-black/40 text-white"
+              >
+                <option value="easy">Beginner</option>
+                <option value="medium">Intermediate</option>
+                <option value="hard">Advanced</option>
+              </select>
+            </div>
 
-          {/* 🔥 PREMIUM BUTTON */}
-          <button
-            onClick={handleStart}
-            disabled={loading}
-            className="relative w-full py-3 rounded-full font-semibold text-lg overflow-hidden group"
-          >
+            <div className="mb-4 text-left">
+              <label className="text-sm text-gray-300 block mb-2">
+                Upload Resume
+              </label>
 
-            {/* Gradient Border */}
-            <span className="absolute inset-0 rounded-full bg-gradient-to-r from-[#E83464] to-[#8E2DE2] p-[2px]" />
+              <input
+                type="file"
+                accept=".pdf"
+                onChange={(e) => setResume(e.target.files?.[0] || null)}
+                className="w-full text-sm text-gray-300"
+              />
 
-            {/* Inner */}
-            <span className="relative flex items-center justify-center rounded-full bg-[#070B14] px-6 py-3 group-hover:bg-transparent transition-all duration-300">
-
-              {/* Glow */}
-              <span className="absolute inset-0 rounded-full opacity-0 group-hover:opacity-100 transition bg-gradient-to-r from-[#E83464] to-[#8E2DE2] blur-xl" />
-
-              {/* TEXT / LOADER */}
-              {loading ? (
-                <div className="flex items-center gap-2">
-                  <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                  Generating AI Interview...
-                </div>
-              ) : (
-                <span className="z-10">
-                  Start AI Interview →
-                </span>
+              {resume && (
+                <p className="text-xs mt-2 text-green-400">
+                  {resume.name}
+                </p>
               )}
-            </span>
+            </div>
 
-          </button>
+            <button
+              onClick={handleStart}
+              disabled={loading}
+              className="w-full py-3 rounded-full bg-gradient-to-r from-[#E83464] to-[#8E2DE2] font-semibold text-lg mt-4"
+            >
+              {loading ? "Generating..." : "Start AI Interview →"}
+            </button>
+          </div>
+
+          {/* FLOAT METRICS */}
+          <div className="absolute -top-6 -right-6 bg-white text-black p-4 rounded-xl shadow-xl w-36">
+            <p className="text-xs text-gray-500">Efficiency</p>
+            <p className="text-2xl font-bold">85%</p>
+          </div>
+
+          <div className="absolute -bottom-6 -left-6 bg-black/70 backdrop-blur-xl p-4 rounded-xl border border-white/10 w-40">
+            <p className="text-xs text-gray-300">Live AI</p>
+            <p className="text-lg font-semibold">8.5 / 10</p>
+          </div>
 
         </div>
-
       </div>
 
     </div>

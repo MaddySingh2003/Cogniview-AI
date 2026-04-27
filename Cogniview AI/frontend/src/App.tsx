@@ -9,16 +9,13 @@ import History from "./pages/History";
 import LearnMore from "./pages/LearnMore";
 import Profile from "./pages/Profile";
 import Dashboard from "./pages/Dashboard";
+import Vision from "./pages/Vision"
+import Background from "./components/Background";
 
 export default function App() {
   return (
     <BrowserRouter>
-      <div className="flex flex-col min-h-screen bg-[#070B14] text-white relative overflow-hidden">
-
-        {/* GLOBAL BACKGROUND */}
-        <div className="absolute w-[500px] h-[500px] bg-purple-600 opacity-20 blur-3xl rounded-full top-[-100px] left-[-100px]" />
-        <div className="absolute w-[400px] h-[400px] bg-pink-500 opacity-20 blur-3xl rounded-full bottom-[-100px] right-[-100px]" />
-
+      <Background/>
         <Navbar />
 
         {/* 🔥 MAIN CONTENT (THIS FIXES GAP) */}
@@ -34,10 +31,11 @@ export default function App() {
             <Route path="/dashboard" element={<Dashboard/>}/>
           </Routes>
         </main>
-
+        
+   <Vision/>
         {/* FOOTER ALWAYS AT BOTTOM */}
         <Footer />
-      </div>
+    
     </BrowserRouter>
   );
 }
