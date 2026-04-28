@@ -116,7 +116,7 @@ export default function Home() {
           </div>
 
           {/* QUICK INFO */}
-          <div className="bg-gradient-to-r from-[#E83464]/20 to-[#8E2DE2]/20 border border-white/10 p-5 rounded-2xl hover:scale-[1.02] transition">
+          <div className="bg-gradient-to-r from-[#E83490] to-[#8E2DE2]/10 border border-white/10 p-5 rounded-2xl hover:scale-[1.02] transition">
             <p className="text-sm text-gray-200">
               Improve faster with adaptive AI-driven insights and personalized feedback.
             </p>

@@ -46,7 +46,8 @@ export default function Auth() {
             </span>
           </h1>
 
-          <p className="text-gray-400 mt-6 max-w-md">
+          <p className=" mt-6 max-w-md">
+
             {isLogin
               ? "Continue improving your interview skills with AI-powered feedback."
               : "Practice real interviews, get evaluated instantly, and improve faster."}
@@ -98,7 +99,7 @@ export default function Auth() {
             {/* SWITCH */}
             <p
               onClick={() => setIsLogin(!isLogin)}
-              className="mt-6 text-center text-sm text-gray-400 cursor-pointer hover:text-white transition"
+              className="mt-6 text-center text-sm text-pink-400 cursor-pointer hover:text-white transition"
             >
               {isLogin
                 ? "Don't have an account? Register"

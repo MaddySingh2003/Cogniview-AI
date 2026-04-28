@@ -15,7 +15,7 @@ export default function History() {
   }, []);
 
   return (
-    <div className="min-h-screen bg-[#56648b] text-white relative overflow-hidden">
+    <div className="min-h-screen  bg-black/40 border-white/10  text-white relative overflow-hidden">
 
       {/* 🔥 GLOW BG */}
       <div className="absolute top-[-200px] left-[-200px] w-[500px] h-[500px] bg-[#E83464]/20 blur-[120px] rounded-full" />

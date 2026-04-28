@@ -9,7 +9,6 @@ export default function Interview() {
   const [question, setQuestion] = useState(state?.question);
   const [answer, setAnswer] = useState<any>("");
   const [loading, setLoading] = useState(false);
-  
 
   const sessionId = state?.sessionId;
 
@@ -45,132 +44,139 @@ export default function Interview() {
     return <p className="mt-20 text-center text-gray-400">Loading...</p>;
 
   return (
-    <div className="min-h-screen bg-[#070B14] text-white flex justify-center items-center px-6 pt-20 relative overflow-hidden">
+    <div className="min-h-screen text-white flex justify-center items-center px-6 pt-20 relative overflow-hidden">
 
-      {/* BACKGROUND */}
-      <div className="absolute inset-0 opacity-20 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjAiIGhlaWdodD0iNjAiIHZpZXdCb3g9IjAgMCA2MCA2MCI+PC9zdmc+')]" />
-      <div className="absolute top-[-200px] left-[-200px] w-[400px] h-[400px] bg-purple-600 opacity-20 blur-[120px] rounded-full" />
-      <div className="absolute bottom-[-200px] right-[-200px] w-[400px] h-[400px] bg-pink-600 opacity-20 blur-[120px] rounded-full" />
+      {/* 🔥 AMBIENT BACKGROUND */}
+      <div className="absolute inset-0 bg-[#070B14]" />
 
-      {/* CARD */}
-      <div className="relative z-10 w-full max-w-3xl bg-white/5 border border-white/10 backdrop-blur-xl p-8 rounded-2xl shadow-2xl">
+      {/* floating glow orbs */}
+      <div className="absolute w-[400px] h-[400px] bg-[#E83464]/20 blur-[120px] rounded-full -top-40 -left-40 animate-pulse" />
+      <div className="absolute w-[400px] h-[400px] bg-[#8E2DE2]/20 blur-[120px] rounded-full -bottom-40 -right-40 animate-pulse" />
 
-        {/* HEADER META INFO */}
-        <div className="flex flex-wrap gap-3 mb-6 text-xs">
+      {/* subtle grid */}
+      <div className="absolute inset-0 opacity-[0.05] bg-[linear-gradient(white_1px,transparent_1px),linear-gradient(to_right,white_1px,transparent_1px)] bg-[size:40px_40px]" />
 
-          <span className="px-3 py-1 rounded-full bg-purple-600/20 border border-purple-500">
-            {question.type?.toUpperCase()}
-          </span>
+      {/* 🔥 MAIN CARD */}
+      <div className="relative z-10 w-full max-w-3xl">
 
-          <span className="px-3 py-1 rounded-full bg-pink-600/20 border border-pink-500">
-            {question.difficulty?.toUpperCase()}
-          </span>
-
-          <span className="px-3 py-1 rounded-full bg-blue-600/20 border border-blue-500">
-            {question.topic || "General"}
-          </span>
-
+        {/* PROGRESS BAR (visual only) */}
+        <div className="mb-6">
+          <div className="w-full h-1 bg-white/10 rounded-full overflow-hidden">
+            <div className="h-full w-1/3 bg-gradient-to-r from-[#E83464] to-[#8E2DE2] animate-pulse" />
+          </div>
         </div>
 
-        {/* QUESTION */}
-        <h2 className="text-2xl font-semibold mb-6 leading-relaxed">
-          {question.question}
-        </h2>
+        {/* GLASS CARD */}
+        <div className="bg-white/5 backdrop-blur-2xl border border-white/10 rounded-3xl p-8 shadow-[0_0_60px_rgba(142,45,226,0.15)]">
 
-        {/* TEXT */}
-        {question.type === "text" && (
-          <textarea
-            className="w-full p-4 rounded-xl bg-black/40 border border-white/10 focus:outline-none focus:ring-2 focus:ring-purple-500"
-            rows={5}
-            placeholder="Type your answer here..."
-            value={answer}
-            onChange={(e) => setAnswer(e.target.value)}
-          />
-        )}
+          {/* META */}
+          <div className="flex flex-wrap gap-3 mb-6 text-xs">
 
-        {/* MCQ */}
-        {question.type === "mcq" && (
-          <div className="space-y-3">
-            {question.options.map((opt: string) => (
-              <label
-                key={opt}
-                className={`flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition ${
-                  answer === opt
-                    ? "bg-purple-600/30 border-purple-500"
-                    : "bg-white/5 border-white/10 hover:bg-white/10"
-                }`}
-              >
-                <input
-                  type="radio"
-                  name="mcq"
-                  checked={answer === opt}
-                  onChange={() => setAnswer(opt)}
-                />
-                {opt}
-              </label>
-            ))}
+            <span className="px-3 py-1 rounded-full bg-[#8E2DE2]/20 border border-[#8E2DE2]/40">
+              {question.type?.toUpperCase()}
+            </span>
+
+            <span className="px-3 py-1 rounded-full bg-[#E83464]/20 border border-[#E83464]/40">
+              {question.difficulty?.toUpperCase()}
+            </span>
+
+            <span className="px-3 py-1 rounded-full bg-white/10 border border-white/20">
+              {question.topic || "General"}
+            </span>
+
           </div>
-        )}
 
-        {/* MSQ */}
-        {question.type === "msq" && (
-          <div className="space-y-3">
-            {question.options.map((opt: string) => (
-              <label
-                key={opt}
-                className={`flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition ${
-                  Array.isArray(answer) && answer.includes(opt)
-                    ? "bg-pink-600/30 border-pink-500"
-                    : "bg-white/5 border-white/10 hover:bg-white/10"
-                }`}
-              >
-                <input
-                  type="checkbox"
-                  checked={Array.isArray(answer) && answer.includes(opt)}
-                  onChange={(e) => {
-                    if (e.target.checked) {
-                      setAnswer((prev: any) => [...(prev || []), opt]);
-                    } else {
-                      setAnswer((prev: any) =>
-                        prev.filter((a: string) => a !== opt)
-                      );
-                    }
-                  }}
-                />
-                {opt}
-              </label>
-            ))}
-          </div>
-        )}
+          {/* QUESTION */}
+          <h2 className="text-2xl md:text-3xl font-semibold mb-6 leading-relaxed">
+            {question.question}
+          </h2>
 
-        {/* BUTTON */}
-        <button
-          onClick={handleSubmit}
-          disabled={loading}
-          className="relative w-full mt-8 py-3 rounded-full font-semibold text-lg overflow-hidden group"
-        >
+          {/* TEXT ANSWER */}
+          {question.type === "text" && (
+            <textarea
+              className="w-full p-4 rounded-xl bg-black/40 border border-white/10 
+              focus:outline-none focus:ring-2 focus:ring-[#8E2DE2] transition"
+              rows={5}
+              placeholder="Type your answer here..."
+              value={answer}
+              onChange={(e) => setAnswer(e.target.value)}
+            />
+          )}
 
-          {/* BORDER */}
-          <span className="absolute inset-0 rounded-full bg-gradient-to-r from-[#E83464] to-[#8E2DE2] p-[2px]" />
+          {/* MCQ */}
+          {question.type === "mcq" && (
+            <div className="space-y-3">
+              {question.options.map((opt: string) => (
+                <label
+                  key={opt}
+                  className={`flex items-center gap-3 p-4 rounded-xl border cursor-pointer transition-all duration-300 ${
+                    answer === opt
+                      ? "bg-gradient-to-r from-[#E83464]/20 to-[#8E2DE2]/20 border-[#8E2DE2]"
+                      : "bg-white/5 border-white/10 hover:bg-white/10"
+                  }`}
+                >
+                  <input
+                    type="radio"
+                    name="mcq"
+                    checked={answer === opt}
+                    onChange={() => setAnswer(opt)}
+                  />
+                  {opt}
+                </label>
+              ))}
+            </div>
+          )}
 
-          {/* INNER */}
-          <span className="relative flex items-center justify-center rounded-full bg-[#070B14] px-6 py-3 group-hover:bg-transparent transition">
+          {/* MSQ */}
+          {question.type === "msq" && (
+            <div className="space-y-3">
+              {question.options.map((opt: string) => (
+                <label
+                  key={opt}
+                  className={`flex items-center gap-3 p-4 rounded-xl border cursor-pointer transition-all duration-300 ${
+                    Array.isArray(answer) && answer.includes(opt)
+                      ? "bg-gradient-to-r from-[#E83464]/20 to-[#8E2DE2]/20 border-[#E83464]"
+                      : "bg-white/5 border-white/10 hover:bg-white/10"
+                  }`}
+                >
+                  <input
+                    type="checkbox"
+                    checked={Array.isArray(answer) && answer.includes(opt)}
+                    onChange={(e) => {
+                      if (e.target.checked) {
+                        setAnswer((prev: any) => [...(prev || []), opt]);
+                      } else {
+                        setAnswer((prev: any) =>
+                          prev.filter((a: string) => a !== opt)
+                        );
+                      }
+                    }}
+                  />
+                  {opt}
+                </label>
+              ))}
+            </div>
+          )}
 
-            <span className="absolute inset-0 rounded-full opacity-0 group-hover:opacity-100 bg-gradient-to-r from-[#E83464] to-[#8E2DE2] blur-xl transition" />
-
+          {/* BUTTON */}
+          <button
+            onClick={handleSubmit}
+            disabled={loading}
+            className="w-full mt-8 py-3 rounded-full font-semibold text-lg 
+            bg-gradient-to-r from-[#E83464] to-[#8E2DE2] 
+            hover:opacity-90 transition flex items-center justify-center"
+          >
             {loading ? (
               <div className="flex gap-2 items-center">
                 <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
                 Evaluating...
               </div>
             ) : (
-              <span className="z-10">Submit Answer →</span>
+              "Submit Answer →"
             )}
+          </button>
 
-          </span>
-
-        </button>
-
+        </div>
       </div>
     </div>
   );

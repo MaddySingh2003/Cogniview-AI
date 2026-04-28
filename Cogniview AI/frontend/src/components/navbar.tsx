@@ -1,5 +1,6 @@
 import { useNavigate } from "react-router-dom";
 import { useState } from "react";
+import logo from "../assets/WevIcon.png";
 
 export default function Navbar() {
   const navigate = useNavigate();
@@ -13,20 +14,20 @@ export default function Navbar() {
   };
 
   return (
-    <nav className="fixed top-0 w-full z-50 px-6 py-4 flex items-center justify-between backdrop-blur-md bg-black/30 border-b border-white/10">
+    <nav className="fixed top-0 w-full z-50 px-4 py-4 flex items-center justify-between backdrop-blur-md bg-black/60 border-b border-white/10">
 
       {/* 🔥 LEFT LOGO */}
       <div
         onClick={() => navigate("/")}
         className="flex items-center gap-2 cursor-pointer"
       >
-        <div className="flex items-end gap-[2px]">
-          <div className="w-[6px] h-5 bg-[#E83464]" />
-          <div className="w-[6px] h-3 bg-[#E83464]" />
-          <div className="w-[6px] h-7 bg-gradient-to-t from-[#8E2DE2] to-[#E83464]" />
-        </div>
-        <span className="text-white text-lg font-semibold">
-          CogniView
+   <img
+          src={logo}
+          alt="CogniView"
+          className="w-10 h-10 object-contain transition-transform duration-300 group-hover:scale-110"
+        />
+        <span className="text-white text-lg font-semibold tracking-wide">
+          Cogni<span className="text-[#8E2DE2]">View</span> <span className="text-fuchsia-500">AI</span>
         </span>
       </div>
 
@@ -34,16 +35,16 @@ export default function Navbar() {
       <div className="hidden md:flex items-center gap-10 text-sm font-medium text-gray-300">
 
         <button
-          onClick={() => navigate("/")}
-          className="hover:text-white transition"
-        >
-          Home
-        </button>
+  onClick={() => navigate("/")}
+  className="text-[#E83490] font-bold hover:text-white transition"
+>
+  Home
+</button>
 
         {token && (
           <button
             onClick={() => navigate("/history")}
-            className="hover:text-white transition"
+            className="text-[#E83490] font-bold hover:text-white transition"
           >
             History
           </button>

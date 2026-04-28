@@ -30,8 +30,8 @@ export default function Vision() {
   };
 
   return (
-    <section id="vision" className="py-32 px-6 border-t bg-black/40 border-white/10">
-      <div className="max-w-[1200px] mx-auto">
+    <section id="vision" className=" bg-black/30 border-white/20 py-32 px-6 border-t ">
+      <div className="max-w-[1200px]  mx-auto">
 
         <div className="flex flex-col lg:flex-row gap-16 items-start">
 

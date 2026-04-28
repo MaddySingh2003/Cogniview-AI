@@ -90,7 +90,7 @@ export default function Dashboard() {
 
         {/* HEADER */}
         <h1 className="text-4xl font-bold mb-2">AI Dashboard</h1>
-        <p className="text-gray-400 mb-10">
+        <p className="text-pink-400 mb-10">
           Track your performance with intelligent insights
         </p>
 
@@ -103,7 +103,7 @@ export default function Dashboard() {
         </div>
 
         {/* CHART */}
-        <div className="bg-black/40 border border-white/10 rounded-2xl p-6 mb-10">
+        <div className="bg-black/80 border border-white/10 rounded-2xl p-6 mb-10">
           <h2 className="mb-4 text-lg">Performance</h2>
 
           <ResponsiveContainer width="100%" height={300}>
@@ -164,7 +164,7 @@ function StatCard({
   trend: number;
 }) {
   return (
-    <div className="bg-black/50 border border-white/10 rounded-2xl p-6">
+    <div className="bg-black/80 border border-white/10 rounded-2xl p-6">
       <p className="text-gray-400 text-sm">{title}</p>
       <h3 className="text-2xl font-bold">{value}</h3>
 
@@ -190,7 +190,7 @@ function Insight({
   type: "good" | "bad";
 }) {
   return (
-    <div className="bg-black/50 border border-white/10 rounded-2xl p-6">
+    <div className="bg-black/90 border border-white/10 rounded-2xl p-6">
       <h3 className="mb-4">{title}</h3>
 
       {data.length === 0 ? (

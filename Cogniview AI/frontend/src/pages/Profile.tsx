@@ -39,7 +39,7 @@ export default function Profile() {
       : "0";
 
   return (
-    <div className="min-h-screen text-white relative overflow-hidden">
+    <div className="min-h-screen bg-black/20 border border-white/10 text-white relative overflow-hidden">
 
       {/* 🔥 FLOATING BACKGROUND BLOBS */}
       <div className="absolute -top-50 -left-50 w-125 h-125 bg-[#E83464]/20 blur-[120px] rounded-full animate-floatSlow" />
