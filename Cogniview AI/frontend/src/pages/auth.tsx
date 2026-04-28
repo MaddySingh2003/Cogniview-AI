@@ -20,9 +20,7 @@ export default function Auth() {
 
       localStorage.setItem("token", res.data.token);
       navigate("/");
-
-    } catch (err: any) {
-      console.error(err);
+    } catch {
       alert("Invalid credentials or server issue");
     } finally {
       setLoading(false);
@@ -30,90 +28,89 @@ export default function Auth() {
   };
 
   return (
-    <div className="min-h-screen bg-[#070B14] text-white flex items-center justify-center relative overflow-hidden">
+    <div className="min-h-screen text-white relative overflow-hidden">
 
-      {/* BACKGROUND GRID */}
-      <div className="absolute inset-0 opacity-20 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjAiIGhlaWdodD0iNjAiIHZpZXdCb3g9IjAgMCA2MCA2MCI+PC9zdmc+')]" />
+      {/* 🔥 SAME BACKGROUND AS HOME */}
+      <div className="absolute top-[-200px] left-[-200px] w-[500px] h-[500px] bg-[#E83464]/20 blur-[120px] rounded-full" />
+      <div className="absolute bottom-[-200px] right-[-200px] w-[500px] h-[500px] bg-[#8E2DE2]/20 blur-[120px] rounded-full" />
 
-      {/* GLOW EFFECTS */}
-      <div className="absolute top-[-150px] left-[-150px] w-[400px] h-[400px] bg-purple-600 opacity-20 blur-[120px] rounded-full" />
-      <div className="absolute bottom-[-150px] right-[-150px] w-[400px] h-[400px] bg-pink-600 opacity-20 blur-[120px] rounded-full" />
+      <div className="max-w-[1400px] mx-auto px-6 md:px-16 pt-32 grid lg:grid-cols-2 gap-16 items-center relative z-10">
 
-      {/* CARD */}
-      <div className="relative z-10 w-[360px] bg-white/5 border border-white/10 backdrop-blur-xl p-8 rounded-2xl shadow-2xl">
+        {/* 🔥 LEFT (MATCH HOME HERO STYLE) */}
+        <div>
 
-        {/* TITLE */}
-        <h2 className="text-3xl font-bold text-center mb-2">
-          {isLogin ? "Welcome back" : "Create account"}
-        </h2>
+          <h1 className="text-5xl md:text-6xl lg:text-[64px] font-bold leading-tight">
+            {isLogin ? "Welcome back to" : "Start your journey with"} <br />
+            <span className="bg-gradient-to-r from-[#E83464] to-[#8E2DE2] bg-clip-text text-transparent">
+              CogniView AI
+            </span>
+          </h1>
 
-        <p className="text-center text-gray-400 text-sm mb-6">
-          {isLogin
-            ? "Login to continue your AI interview journey"
-            : "Start your AI interview journey today"}
-        </p>
-
-        {/* INPUTS */}
-        <div className="space-y-4">
-
-          <input
-            type="email"
-            placeholder="Email"
-            className="w-full p-3 rounded-lg bg-black/40 border border-white/10 focus:outline-none focus:ring-2 focus:ring-purple-500"
-            onChange={(e) => setEmail(e.target.value)}
-          />
-
-          <input
-            type="password"
-            placeholder="Password"
-            className="w-full p-3 rounded-lg bg-black/40 border border-white/10 focus:outline-none focus:ring-2 focus:ring-pink-500"
-            onChange={(e) => setPassword(e.target.value)}
-          />
+          <p className="text-gray-400 mt-6 max-w-md">
+            {isLogin
+              ? "Continue improving your interview skills with AI-powered feedback."
+              : "Practice real interviews, get evaluated instantly, and improve faster."}
+          </p>
 
         </div>
 
-        {/* BUTTON */}
-        <button
-          onClick={handleSubmit}
-          disabled={loading}
-          className="relative w-full mt-6 py-3 rounded-full font-semibold text-lg overflow-hidden group"
-        >
+        {/* 🔥 RIGHT FORM (CLEAN GLASS LIKE HOME) */}
+        <div className="relative">
 
-          {/* Gradient Border */}
-          <span className="absolute inset-0 rounded-full bg-gradient-to-r from-[#E83464] to-[#8E2DE2] p-[2px]" />
+          <div className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-3xl p-8 shadow-xl max-w-md w-full ml-auto">
 
-          {/* Inner */}
-          <span className="relative flex items-center justify-center rounded-full bg-[#070B14] px-6 py-3 group-hover:bg-transparent transition-all duration-300">
+            <h2 className="text-2xl font-semibold mb-6 text-center">
+              {isLogin ? "Login" : "Register"}
+            </h2>
 
-            {/* Glow */}
-            <span className="absolute inset-0 rounded-full opacity-0 group-hover:opacity-100 transition bg-gradient-to-r from-[#E83464] to-[#8E2DE2] blur-xl" />
+            {/* INPUTS */}
+            <div className="space-y-4">
 
-            {loading ? (
-              <div className="flex items-center gap-2">
-                <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                Processing...
-              </div>
-            ) : (
-              <span className="z-10">
-                {isLogin ? "Login →" : "Register →"}
-              </span>
-            )}
+              <input
+                type="email"
+                placeholder="Email"
+                className="w-full p-3 rounded-lg bg-black/40 border border-white/10 focus:outline-none focus:border-[#E83464] transition"
+                onChange={(e) => setEmail(e.target.value)}
+              />
 
-          </span>
+              <input
+                type="password"
+                placeholder="Password"
+                className="w-full p-3 rounded-lg bg-black/40 border border-white/10 focus:outline-none focus:border-[#8E2DE2] transition"
+                onChange={(e) => setPassword(e.target.value)}
+              />
 
-        </button>
+            </div>
 
-        {/* SWITCH */}
-        <p
-          onClick={() => setIsLogin(!isLogin)}
-          className="mt-6 text-center text-sm text-gray-400 cursor-pointer hover:text-white transition"
-        >
-          {isLogin
-            ? "Don't have an account? Register"
-            : "Already have an account? Login"}
-        </p>
+            {/* BUTTON */}
+            <button
+              onClick={handleSubmit}
+              disabled={loading}
+              className="w-full mt-6 py-3 rounded-full bg-gradient-to-r from-[#E83464] to-[#8E2DE2] font-semibold text-lg hover:opacity-90 transition"
+            >
+              {loading
+                ? "Processing..."
+                : isLogin
+                ? "Login →"
+                : "Register →"}
+            </button>
+
+            {/* SWITCH */}
+            <p
+              onClick={() => setIsLogin(!isLogin)}
+              className="mt-6 text-center text-sm text-gray-400 cursor-pointer hover:text-white transition"
+            >
+              {isLogin
+                ? "Don't have an account? Register"
+                : "Already have an account? Login"}
+            </p>
+
+          </div>
+
+        </div>
 
       </div>
+
     </div>
   );
 }
