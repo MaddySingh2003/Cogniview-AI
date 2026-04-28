@@ -1,3 +1,6 @@
+///session.js///
+
+
 const mongoose = require("mongoose");
 
 const answerSchema = new mongoose.Schema({
@@ -11,7 +14,7 @@ const answerSchema = new mongoose.Schema({
 
 const sessionSchema = new mongoose.Schema({
   sessionId: String,
-  userId: String, // ✅ NEW
+  userId: String,
 
   role: String,
   level: String,
@@ -21,9 +24,14 @@ const sessionSchema = new mongoose.Schema({
 
   createdAt: {
     type: Date,
-    default: Date.now,
-    expires: 60 * 60 * 24 * 30 // ✅ 30 days auto delete
+    default: () => new Date()
   }
 });
+
+// ✅ PROPER TTL INDEX (30 days)
+sessionSchema.index(
+  { createdAt: 1 },
+  { expireAfterSeconds: 60 * 60 * 24 * 30 }
+);
 
 module.exports = mongoose.model("Session", sessionSchema);

@@ -1,3 +1,5 @@
+// resumeParser.js///
+
 const pdf = require("pdf-parse");
 
 async function extractText(fileBuffer) {

@@ -1,3 +1,5 @@
+////userController.js///
+
 const Session = require("../models/Session");
 
 module.exports = {
@@ -11,8 +13,10 @@ module.exports = {
 
       const formatted = sessions.map((session) => {
 
+        // ✅ EMPTY SESSION SAFE
         if (!session.answers || session.answers.length === 0) {
           return {
+            sessionId: session.sessionId, // 🔥 IMPORTANT
             role: session.role,
             level: session.level,
             createdAt: session.createdAt,
@@ -51,6 +55,7 @@ module.exports = {
         }
 
         return {
+          sessionId: session.sessionId, // 🔥 CRITICAL FIX
           role: session.role,
           level: session.level,
           createdAt: session.createdAt,
@@ -63,7 +68,7 @@ module.exports = {
       res.json(formatted);
 
     } catch (err) {
-      console.error(err);
+      console.error("HISTORY ERROR:", err);
       res.status(500).json({ error: "History failed" });
     }
   }
