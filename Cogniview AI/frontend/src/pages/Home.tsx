@@ -9,7 +9,7 @@ export default function Home() {
   const [level, setLevel] = useState("easy");
   const [loading, setLoading] = useState(false);
   const [resume, setResume] = useState(null);
-  const [voiceEnabled, setVoiceEnabled] = useState(false);
+  const [codingEnabled, setCodingEnabled] = useState(false);
 
   const [voiceMode, setVoiceMode] = useState(
   localStorage.getItem("voiceMode") === "true"
@@ -137,85 +137,121 @@ const toggleVoice = () => {
       </div>
 
       {/* BOTTOM SECTION */}
-      <div className="mt-32 pb-20 text-center relative z-10">
-        <h2 className="text-3xl font-bold mb-10 animate-fadeInUp">
-          Train smarter. Get hired faster.
-        </h2>
+<div className="mt-32 pb-24 text-center relative z-10 text-white">
 
-        <div className="relative max-w-xl mx-auto">
+  {/* Heading */}
+  <h2 className="bg-gradient-to-r from-[#E83464] to-[#8E2DE2] bg-clip-text text-transparent text-4xl md:text-5xl font-semibold leading-tight">
+    Train smarter. Get hired faster.
+  </h2>
 
-          <div className="bg-white/30 backdrop-blur border border-white/30 rounded-3xl p-8 shadow-2xl hover:scale-[1.01] transition">
+  <div className="relative max-w-2xl mx-auto mt-5" >
 
-            <div className="mb-6 text-left">
-              <h3 className="text-xl font-semibold">AI Interview Setup</h3>
-              <p className="text-sm text-gray-300">
-                Customize your interview before starting
-              </p>
-            </div>
+    {/* Glow */}
+    <div className="absolute inset-0 bg-gradient-to-r from-purple-600/30 to-pink-600/30 blur-3xl opacity-40 rounded-3xl"></div>
 
-            <div className="flex gap-4 mb-6">
-              
-              <select
-                value={role}
-                onChange={(e) => setRole(e.target.value)}
-                className="w-1/2 p-3 rounded-lg bg-black/40 text-white"
-              >
-                
-                <option value="backend">Backend</option>
-                <option value="frontend">Frontend</option>
-                <option value="data-science">Data Science</option>
-              </select>
+    {/* Card */}
+    <div className="relative bg-white/5 backdrop-blur-2xl border border-white/10 rounded-3xl p-8 shadow-[0_0_40px_rgba(168,85,247,0.2)]">
 
-              <select
-                value={level}
-                onChange={(e) => setLevel(e.target.value)}
-                className="w-1/2 p-3 rounded-lg bg-black/40 text-white"
-              >
-                <option value="easy">Beginner</option>
-                <option value="medium">Intermediate</option>
-                <option value="hard">Advanced</option>
-              </select>
-            </div>
-
-            <input
-              type="file"
-              accept=".pdf"
-              onChange={(e) => setResume(e.target.files?.[0] || null)}
-              className="mb-4 w-full text-sm text-gray-300"
-            />
-<button
-  onClick={toggleVoice}
-  className={`px-4 py-2 rounded-full text-sm font-semibold transition ${
-    voiceMode
-      ? "bg-green-500 text-black"
-      : "bg-white/10 text-white"
-  }`}
->
-  🎙 Voice Mode: {voiceMode ? "ON" : "OFF"}
-</button>
-            <button
-              onClick={handleStart}
-              disabled={loading}
-              className="w-full py-3 rounded-full bg-gradient-to-r from-[#E83464] to-[#8E2DE2] font-semibold text-lg mt-4 hover:scale-105 transition"
-            >
-              {loading ? "Generating..." : "Start AI Interview →"}
-            </button>
-          </div>
-
-          {/* FLOAT METRICS */}
-          <div className="absolute -top-6 -right-6 bg-white text-black p-4 rounded-xl shadow-xl w-36 animate-float">
-            <p className="text-xs text-gray-500">Efficiency</p>
-            <p className="text-2xl font-bold">85%</p>
-          </div>
-
-          <div className="absolute -bottom-6 -left-6 bg-black/70 backdrop-blur-xl p-4 rounded-xl border border-white/10 w-40 animate-floatSlow">
-            <p className="text-xs text-gray-300">Live AI</p>
-            <p className="text-lg font-semibold">8.5 / 10</p>
-          </div>
-
-        </div>
+      {/* Header */}
+      <div className="mb-6 text-left">
+        <h3 className="text-2xl font-semibold">AI Interview Setup</h3>
+        <p className="text-sm text-gray-400">
+          Customize spanyour interview experience
+        </p>
       </div>
 
+      {/* Selects */}
+      <div className="flex gap-4 mb-6">
+        <select
+          value={role}
+          onChange={(e) => setRole(e.target.value)}
+          className="w-1/2 p-3 rounded-xl bg-black border border-blac/10 focus:ring-2 focus:ring-purple-500"
+        >
+          <option value="backend">Backend</option>
+          <option value="frontend">Frontend</option>
+          <option value="data-science">Data Science</option>
+        </select>
+
+        <select
+          value={level}
+          onChange={(e) => setLevel(e.target.value)}
+          className="w-1/2 p-3 rounded-xl bg-black border border-white/10 focus:ring-2 focus:ring-pink-500"
+        >
+          <option value="easy">Beginner</option>
+          <option value="medium">Intermediate</option>
+          <option value="hard">Advanced</option>
+        </select>
+      </div>
+
+      {/* File */}
+      <input
+        type="file"
+        accept=".pdf"
+        onChange={(e) => setResume(e.target.files?.[0] || null)}
+        className="w-full mb-6 text-sm text-gray-400 file:mr-4 file:py-2 file:px-4 
+        file:rounded-full file:border-0 file:bg-purple-600 file:text-white hover:file:bg-purple-500"
+      />
+
+      {/* 🔥 SAME ROW CONTROLS */}
+      <div className="flex items-center justify-between gap-4 mb-6">
+
+        {/* Voice Toggle */}
+        <button
+          onClick={toggleVoice}
+          className={`flex-1 py-2 rounded-xl text-sm font-medium transition-all ${
+            voiceMode
+              ? "bg-green-500/90 shadow-lg shadow-green-500/30"
+              : "bg-red-500/90 shadow-lg shadow-red-500/30"
+          }`}
+        >
+          🎙 Voice: {voiceMode ? "ON" : "OFF"}
+        </button>
+
+        {/* Coding Toggle */}
+        <div className="flex items-center justify-between flex-1 bg-white/5 border border-white/10 px-4 py-2 rounded-xl">
+          <span className="text-sm">Coding</span>
+
+          <button
+            onClick={() => setCodingEnabled(!codingEnabled)}
+            className={`w-11 h-6 rounded-full relative transition ${
+              codingEnabled ? "bg-green-500" : "bg-gray-500"
+            }`}
+          >
+            <span
+              className={`absolute top-1 left-1 w-4 h-4 bg-white rounded-full transition ${
+                codingEnabled ? "translate-x-5" : ""
+              }`}
+            />
+          </button>
+        </div>
+
+      </div>
+
+      {/* CTA */}
+      <button
+        onClick={handleStart}
+        disabled={loading}
+        className="w-full py-3 rounded-full font-semibold text-lg 
+        bg-gradient-to-r from-pink-500 to-purple-600 
+        hover:scale-105 hover:shadow-[0_0_20px_rgba(236,72,153,0.6)] transition"
+      >
+        {loading ? "Generating..." : "Start AI Interview →"}
+      </button>
+    </div>
+
+    {/* Floating Stats */}
+    <div className="absolute -top-8 -right-8 bg-white/10 backdrop-blur-xl border border-white/10 p-4 rounded-xl">
+      <p className="text-xs text-gray-400">Efficiency</p>
+      <p className="text-2xl font-bold text-green-400">85%</p>
+    </div>
+
+    <div className="absolute -bottom-8 -left-8 bg-black/60 backdrop-blur-xl border border-white/10 p-4 rounded-xl">
+      <p className="text-xs text-gray-400">Live AI</p>
+      <p className="text-lg font-semibold text-purple-400">8.5 / 10</p>
+    </div>
+
+  </div>
+</div>
       {/* 🔥 CUSTOM ANIMATIONS */}
       <style>
         {`
