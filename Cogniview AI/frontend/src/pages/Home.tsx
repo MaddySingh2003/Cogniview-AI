@@ -9,6 +9,17 @@ export default function Home() {
   const [level, setLevel] = useState("easy");
   const [loading, setLoading] = useState(false);
   const [resume, setResume] = useState(null);
+  const [voiceEnabled, setVoiceEnabled] = useState(false);
+
+  const [voiceMode, setVoiceMode] = useState(
+  localStorage.getItem("voiceMode") === "true"
+);
+
+const toggleVoice = () => {
+  const val = !voiceMode;
+  setVoiceMode(val);
+  localStorage.setItem("voiceMode", String(val));
+};
 
   const handleStart = async () => {
     try {
@@ -143,11 +154,13 @@ export default function Home() {
             </div>
 
             <div className="flex gap-4 mb-6">
+              
               <select
                 value={role}
                 onChange={(e) => setRole(e.target.value)}
                 className="w-1/2 p-3 rounded-lg bg-black/40 text-white"
               >
+                
                 <option value="backend">Backend</option>
                 <option value="frontend">Frontend</option>
                 <option value="data-science">Data Science</option>
@@ -170,7 +183,16 @@ export default function Home() {
               onChange={(e) => setResume(e.target.files?.[0] || null)}
               className="mb-4 w-full text-sm text-gray-300"
             />
-
+<button
+  onClick={toggleVoice}
+  className={`px-4 py-2 rounded-full text-sm font-semibold transition ${
+    voiceMode
+      ? "bg-green-500 text-black"
+      : "bg-white/10 text-white"
+  }`}
+>
+  🎙 Voice Mode: {voiceMode ? "ON" : "OFF"}
+</button>
             <button
               onClick={handleStart}
               disabled={loading}
@@ -228,7 +250,7 @@ export default function Home() {
         }
         `}
       </style>
-
+av
     </div>
   );
 }

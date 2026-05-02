@@ -1,30 +1,30 @@
-///llmService.js///
-
 require("dotenv").config();
 
 const GEMINI_KEY = process.env.GEMINI_API_KEY;
 const HF_KEY = process.env.HUGGINGFACE_API_KEY;
 
-const GEMINI_MODEL = "gemini-2.5-flash";
-const HF_MODEL = "google/flan-t5-large";
-// ================= STRICT PROMPT =================
-function buildPrompt(role, level, resumeText) {
-  if (resumeText) {
-    return `
-You are an AI interviewer.
+// 🔥 MODEL CHAIN
+const GEMINI_MODELS = [
+  "gemini-2.5-flash",
+  "gemini-2.5-flash-lite",
+  "gemini-2.0-flash"
+];
 
-Generate EXACTLY 15 interview questions STRICTLY in JSON array format.
+const HF_MODEL = "mistralai/Mistral-7B-Instruct-v0.2";
 
-Based ONLY on this resume:
-${resumeText}
+// ================= PROMPT =================
+function buildPrompt(role, level, type) {
+  return `
+  Act like a interviewer,
+Generate EXACTLY 5 ${type.toUpperCase()} interview questions.
+
+Role: ${role}
+Level: ${level}
 
 RULES:
-- Focus on projects, skills, tools
-- Include practical + conceptual questions
-- Maintain mix:
-  • 5 TEXT
-  • 5 MCQ
-  • 5 MSQ
+- Return ONLY JSON array
+- EXACTLY 5 questions
+- Each MUST include "topic" (1-2 words, like API, DB, Auth)
 
 FORMAT:
 
@@ -41,247 +41,166 @@ MCQ:
  "type":"mcq",
  "question":"...",
  "options":["A","B","C","D"],
- "correctAnswer":"A"
-}
-
-MSQ:
-{
- "type":"msq",
- "question":"...",
- "options":["A","B","C","D"],
- "correctAnswers":["A","C"]
-}
-
-Return ONLY JSON.
-`;
-  }
-  return `
-You are an AI interviewer.
-
-Generate EXACTLY 15 questions in STRICT JSON format.
-
-Role: ${role}
-Level: ${level}
-
-RULES:
-- Return ONLY JSON array (no text, no explanation)
-- Must be EXACTLY 15 objects
-
-STRUCTURE:
-
-TEXT:
-{
- "type":"text",
- "question":"...",
- "modelAnswer":"...",
+ "correctAnswer":"A",
  "topic":"..."
 }
 
-MCQ:
-{
- "type":"mcq",
- "question":"...",
- "options":["A","B","C","D"],
- "correctAnswer":"A"
-}
-
 MSQ:
 {
  "type":"msq",
  "question":"...",
  "options":["A","B","C","D"],
- "correctAnswers":["A","C"]
+ "correctAnswers":["A","C"],
+ "topic":"..."
 }
-
-DISTRIBUTION:
-- 5 TEXT
-- 5 MCQ
-- 5 MSQ
-`;
-
-  // existing fallback
-  return `
-You are an AI interviewer.
-
-Generate EXACTLY 15 questions.
-
-Role: ${role}
-Level: ${level}
-
-(return JSON...)
 `;
 }
-// ================= PARSER =================
+
+// ================= PARSE =================
 function safeParse(text) {
-  const cleaned = text
-    .replace(/```json/g, "")
-    .replace(/```/g, "")
-    .trim();
+  const clean = text.replace(/```json|```/g, "").trim();
 
-  const start = cleaned.indexOf("[");
-  const end = cleaned.lastIndexOf("]");
+  const start = clean.indexOf("[");
+  const end = clean.lastIndexOf("]");
 
-  if (start === -1 || end === -1) {
-    throw new Error("JSON not found");
-  }
+  if (start === -1 || end === -1) throw new Error("Invalid JSON");
 
-  const parsed = JSON.parse(cleaned.slice(start, end + 1));
-
-  if (!Array.isArray(parsed) || parsed.length !== 15) {
-    throw new Error("Invalid count");
-  }
-
-  return parsed;
+  return JSON.parse(clean.slice(start, end + 1));
 }
 
-// ================= NORMALIZER =================
-function normalizeQuestions(questions, level) {
-  return questions.map((q, i) => {
-    return {
-      id: i + 1,
-      type: q.type || "text",
-      question: q.question || "Sample question",
-      modelAnswer: q.modelAnswer || "",
-      topic:
-  q.topic ||
-  (q.type === "text"
-    ? "Concept"
-    : q.type === "mcq"
-    ? "Theory"
-    : "Application"),
-      difficulty: q.difficulty || level,
-      options: q.options || [],
-      correctAnswer: q.correctAnswer || null,
-      correctAnswers: q.correctAnswers || []
-    };
+// ================= VALIDATION =================
+function validate(qs) {
+  if (!Array.isArray(qs) || qs.length !== 5)
+    throw new Error("Invalid count");
+
+  qs.forEach(q => {
+    if (!q.question) throw new Error("Missing question");
+    if (!q.topic || q.topic.length < 2)
+      throw new Error("Missing topic");
   });
+
+  return qs;
+}
+
+// ================= NORMALIZE =================
+function normalize(qs, level, offset = 0) {
+  return qs.map((q, i) => ({
+    id: offset + i + 1,
+    type: q.type || "text",
+    question: q.question,
+    modelAnswer: q.modelAnswer || "",
+    topic: q.topic, // 🔥 NO "General"
+    difficulty: level,
+    options: q.options || [],
+    correctAnswer: q.correctAnswer || null,
+    correctAnswers: q.correctAnswers || []
+  }));
 }
 
 // ================= GEMINI =================
-async function callGemini(prompt) {
-  const url = `https://generativelanguage.googleapis.com/v1/models/${GEMINI_MODEL}:generateContent?key=${GEMINI_KEY}`;
+async function callGemini(prompt, model) {
+  const res = await fetch(
+    `https://generativelanguage.googleapis.com/v1/models/${model}:generateContent?key=${GEMINI_KEY}`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        contents: [{ parts: [{ text: prompt }] }]
+      })
+    }
+  );
 
-  const res = await fetch(url, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      contents: [{ role: "user", parts: [{ text: prompt }] }]
-    })
-  });
-
-  if (!res.ok) throw new Error(`Gemini ${res.status}`);
+  if (!res.ok) throw new Error(`${model} ${res.status}`);
 
   const data = await res.json();
 
   const text =
     data.candidates?.[0]?.content?.parts?.[0]?.text;
 
-  if (!text) throw new Error("No response");
+  if (!text) throw new Error("Empty Gemini response");
 
-  return safeParse(text);
+  return validate(safeParse(text));
 }
 
 // ================= HF =================
-async function callHF(prompt, retries = 4) {
-  for (let i = 0; i < retries; i++) {
-    const res = await fetch(
-      `https://api-inference.huggingface.co/models/${HF_MODEL}`,
-      {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${HF_KEY}`,
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify({
-          inputs: prompt,
-          parameters: {
-            max_new_tokens: 800,
-            temperature: 0.3
-          }
-        })
-      }
-    );
-
-    const contentType = res.headers.get("content-type");
-
-    // ❌ HTML → model loading
-    if (!contentType || !contentType.includes("application/json")) {
-      console.warn(`HF HTML response → retry ${i + 1}`);
-      await new Promise(r => setTimeout(r, 4000));
-      continue;
+async function callHF(prompt) {
+  const res = await fetch(
+    `https://api-inference.huggingface.co/models/${HF_MODEL}`,
+    {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${HF_KEY}`,
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        inputs: prompt,
+        parameters: {
+          max_new_tokens: 700,
+          temperature: 0.3
+        }
+      })
     }
+  );
 
-    const data = await res.json();
+  const contentType = res.headers.get("content-type");
 
-    // 🔥 model loading
-    if (data.error?.includes("loading")) {
-      console.warn(`HF loading → retry ${i + 1}`);
-      await new Promise(r => setTimeout(r, 5000));
-      continue;
+  if (!contentType || !contentType.includes("application/json"))
+    throw new Error("HF HTML");
+
+  const data = await res.json();
+
+  if (data.error) throw new Error(data.error);
+
+  const text = data[0]?.generated_text;
+
+  if (!text) throw new Error("Empty HF");
+
+  return validate(safeParse(text));
+}
+
+// ================= GENERATE BLOCK =================
+async function generateBlock(prompt) {
+  // 🔥 GEMINI FIRST
+  for (let model of GEMINI_MODELS) {
+    try {
+      console.log(`⚡ Gemini → ${model}`);
+      return await callGemini(prompt, model);
+    } catch (err) {
+      console.warn(`❌ ${model}`, err.message);
+      await new Promise(r => setTimeout(r, 1500));
     }
-
-    if (data.error) {
-      throw new Error(data.error);
-    }
-
-    const text = data[0]?.generated_text;
-
-    if (!text) throw new Error("No HF output");
-
-    return safeParse(text);
   }
 
-  throw new Error("HF failed after retries");
-}
-// ================= FALLBACK =================
-function fallback(role, level) {
-  return normalizeQuestions(
-    [
-      ...Array(5).fill({
-        type: "text",
-        question: `Explain ${role}`,
-        modelAnswer: "Fallback answer"
-      }),
-      ...Array(5).fill({
-        type: "mcq",
-        question: "Sample MCQ",
-        options: ["A", "B", "C", "D"],
-        correctAnswer: "A"
-      }),
-      ...Array(5).fill({
-        type: "msq",
-        question: "Sample MSQ",
-        options: ["A", "B", "C", "D"],
-        correctAnswers: ["A", "C"]
-      })
-    ],
-    level
-  );
+  // 🔥 HF FALLBACK
+  try {
+    console.log("⚡ HF fallback...");
+    return await callHF(prompt);
+  } catch (err) {
+    console.warn("❌ HF failed:", err.message);
+  }
+
+  throw new Error("All LLM providers failed");
 }
 
 // ================= MAIN =================
-async function generateQuestions(role, level,resumeText="") {
-  const prompt = buildPrompt(role, level,resumeText);
-
+async function generateQuestions(role, level) {
   try {
-    console.log("⚡ Gemini...");
-    const q = await callGemini(prompt);
-    return { questions: normalizeQuestions(q, level), source: "gemini" };
+    const textQ = await generateBlock(buildPrompt(role, level, "text"));
+    const mcqQ = await generateBlock(buildPrompt(role, level, "mcq"));
+    const msqQ = await generateBlock(buildPrompt(role, level, "msq"));
+
+    const all = [
+      ...normalize(textQ, level, 0),
+      ...normalize(mcqQ, level, 5),
+      ...normalize(msqQ, level, 10)
+    ];
+
+    return { questions: all, source: "llm" };
 
   } catch (err) {
-    console.warn("Gemini failed:", err.message);
+    console.error("🔥 HARD FAIL:", err.message);
+    throw new Error("AI service busy, try again");
   }
-
-  try {
-    console.log("⚡ HF...");
-    const q = await callHF(prompt);
-    return { questions: normalizeQuestions(q, level), source: "hf" };
-
-  } catch (err) {
-    console.warn("HF failed:", err.message);
-  }
-
-  throw new Error ("LLM service unavailable");
 }
 
 module.exports = { generateQuestions };
