@@ -36,16 +36,25 @@ export default function Navbar() {
 
         {/* DESKTOP */}
         <div className="hidden md:flex items-center  gap-8 text-sm font-medium text-gray-300">
-          <button onClick={() => navigate("/")} className="font-extrabold text-fuchsia-700 hover:text-white">
+          <button onClick={() => navigate("/")} className="hover:bg-purple-300 hover:text-white px-8 py-3 rounded-full text-white font-semibold hover:scale-105 transition">
             Home
           </button>
 
           {token && (
             <button
               onClick={() => navigate("/history")}
-              className= " hover:text-white font-extrabold text-fuchsia-700"
+              className= "hover:bg-purple-300 hover:text-white px-8 py-3 rounded-full text-white font-semibold hover:scale-105 transition"
             >
               History
+            </button>
+            
+          )}
+          {token && (
+            <button
+              onClick={() => navigate("/dashboard")}
+              className="hover:bg-purple-300 hover:text-white px-8 py-3 rounded-full text-white font-semibold hover:scale-105 transition"
+            >
+              Dashboard
             </button>
           )}
         </div>

@@ -10,18 +10,14 @@ import {
 } from "recharts";
 
 // ✅ TYPE DEFINITIONS
-type Answer = {
-  topic?: string;
-  score?: number;
-};
-
 type Session = {
-  sessionId: string;
+  sessionId?: string;
   role: string;
   level: string;
   averageScore: number;
   createdAt: string;
-  answers?: Answer[];
+  strongAreas?: string[];
+  weakAreas?: string[];
 };
 
 export default function Dashboard() {
@@ -55,29 +51,18 @@ export default function Dashboard() {
         (data[data.length - 2].averageScore || 0)
       : 0;
 
-  // ================= TOPICS =================
-  const topicMap: Record<string, number[]> = {};
+  // ================= ✅ FIXED TOPICS =================
+  const strong = Array.from(
+    new Set(
+      data.flatMap((d) => d.strongAreas || [])
+    )
+  );
 
-  data.forEach((session) => {
-    session.answers?.forEach((a) => {
-      const topic = a.topic || "General";
-
-      if (!topicMap[topic]) topicMap[topic] = [];
-      topicMap[topic].push(a.score || 0);
-    });
-  });
-
-  let strong: string[] = [];
-  let weak: string[] = [];
-
-  Object.keys(topicMap).forEach((t) => {
-    const scores = topicMap[t];
-    const avg =
-      scores.reduce((a, b) => a + b, 0) / scores.length;
-
-    if (avg >= 6) strong.push(t);
-    if (avg <= 4) weak.push(t);
-  });
+  const weak = Array.from(
+    new Set(
+      data.flatMap((d) => d.weakAreas || [])
+    )
+  );
 
   return (
     <div className="min-h-screen text-white relative overflow-hidden">
@@ -131,9 +116,9 @@ export default function Dashboard() {
         <div className="bg-black/40 border border-white/10 rounded-2xl p-6">
           <h2 className="mb-4 text-lg">Recent</h2>
 
-          {data.slice(0, 5).map((d) => (
+          {data.slice(0, 5).map((d, i) => (
             <div
-              key={d.sessionId}
+              key={i}
               className="flex justify-between p-4 border-b border-white/10"
             >
               <div>

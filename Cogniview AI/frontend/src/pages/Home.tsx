@@ -86,12 +86,7 @@ const toggleVoice = () => {
               Learn more
             </button>
 
-            <button
-              onClick={() => navigate("/dashboard")}
-              className="px-8 py-3 rounded-full bg-white text-black font-semibold hover:scale-105 transition"
-            >
-              Dashboard
-            </button>
+            
           </div>
         </div>
 
@@ -183,6 +178,11 @@ const toggleVoice = () => {
         >
           <option value="backend">Backend</option>
           <option value="frontend">Frontend</option>
+          <option value="fullstack">Fullstack</option>
+          <option value="system-design">System Design</option>
+           <option value="devops">DevOps</option>
+           <option value="Artificial-Intelligence">Artificial Intelligence</option>
+           <option value="machine-learning">Machine Learning</option>
           <option value="data-science">Data Science</option>
         </select>
 
@@ -191,9 +191,11 @@ const toggleVoice = () => {
           onChange={(e) => setLevel(e.target.value)}
           className="w-1/2 p-3 rounded-xl bg-black border border-white/10 focus:ring-2 focus:ring-pink-500"
         >
+          <option value="intern">Intern</option>
           <option value="easy">Beginner</option>
           <option value="medium">Intermediate</option>
           <option value="hard">Advanced</option>
+          <option value="expert">Expert</option>
         </select>
       </div>
 
