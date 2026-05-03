@@ -5,40 +5,65 @@ const axios = require("axios");
 function generateFeedback({ answer, modelAnswer, score, semantic }) {
   const feedback = [];
 
-  if (answer.length < 20) {
-    feedback.push("Answer is too short. Add more explanation.");
+  const cleanAnswer = answer.toLowerCase().trim();
+
+  // ❌ Completely irrelevant / gibberish
+  if (cleanAnswer.length < 5 || !/[a-zA-Z]/.test(cleanAnswer)) {
+    return [
+      "Answer appears invalid or meaningless.",
+      "Please provide a clear and structured explanation."
+    ];
   }
 
-  if (semantic < 0.4) {
-    feedback.push("Answer is not aligned with the question.");
-  } else if (semantic < 0.7) {
-    feedback.push("Partial understanding. Missing key concepts.");
-  } else {
-    feedback.push("Good conceptual understanding.");
+  // 🔥 Strong semantic-based feedback
+  if (semantic < 0.3) {
+    feedback.push(
+      "Your answer does not address the question correctly."
+    );
+    feedback.push(
+      "Revise the core concept and try again with a clear explanation."
+    );
+  } 
+  else if (semantic < 0.6) {
+    feedback.push(
+      "Partial understanding, but key concepts are missing."
+    );
+  } 
+  else {
+    feedback.push(
+      "Good understanding of the concept."
+    );
   }
 
-  const keywords = modelAnswer
-    ? modelAnswer.toLowerCase().split(" ").slice(0, 10)
-    : [];
+  // 🔥 Compare with model answer (better logic)
+  if (modelAnswer) {
+    const importantWords = modelAnswer
+      .toLowerCase()
+      .split(" ")
+      .filter(w => w.length > 4);
 
-  const matchCount = keywords.filter(k =>
-    answer.toLowerCase().includes(k)
-  ).length;
+    const matchCount = importantWords.filter(w =>
+      cleanAnswer.includes(w)
+    ).length;
 
-  if (keywords.length > 0) {
-    const ratio = matchCount / keywords.length;
+    const ratio = matchCount / importantWords.length;
 
-    if (ratio < 0.3) {
-      feedback.push("Missing important technical keywords.");
-    } else if (ratio > 0.6) {
-      feedback.push("Covers important concepts well.");
+    if (ratio < 0.2) {
+      feedback.push(
+        "Missing key technical terms from the expected answer."
+      );
+    } else if (ratio > 0.5) {
+      feedback.push(
+        "Covers important technical points well."
+      );
     }
   }
 
+  // 🔥 Score-based clarity
   if (score >= 8) {
     feedback.push("Strong answer.");
   } else if (score >= 5) {
-    feedback.push("Average answer. Improve clarity.");
+    feedback.push("Average answer. Add more depth.");
   } else {
     feedback.push("Weak answer. Needs improvement.");
   }

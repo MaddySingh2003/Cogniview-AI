@@ -9,7 +9,7 @@ module.exports = {
   // ================= START =================
   startInterview: async (req, res) => {
     try {
-      const { role, level, codingEnabled } = req.body; // ✅ NEW
+      const { role, level, codingEnabled } = req.body;
       const userId = req.user.userId;
 
       let resumeText = "";
@@ -28,14 +28,13 @@ module.exports = {
         }
       }
 
-      // ✅ PASS CODING FLAG
       let result;
       try {
         result = await generateQuestions(
           role,
           level,
           resumeText,
-          codingEnabled === "true" // 🔥 important
+          codingEnabled === "true"
         );
       } catch (err) {
         console.error("LLM FAILED:", err.message);
@@ -116,10 +115,10 @@ module.exports = {
         const correct = question.correctAnswer === answer;
 
         result = {
-          score: correct ? 10 : 3,
+          score: correct ? 10 : 0,
           feedback: correct
-            ? ["Correct answer"]
-            : ["Incorrect, revise concept"]
+            ? ["Correct answer."]
+            : ["Incorrect. Review this concept."]
         };
       }
 
@@ -135,23 +134,42 @@ module.exports = {
             ? 0
             : Math.round((match / correct.length) * 10);
 
-        result = {
-          score,
-          feedback: ["Partial correctness"]
-        };
+        let feedback;
+
+        if (score === 10) {
+          feedback = ["All correct options selected."];
+        } else if (score >= 5) {
+          feedback = ["Partially correct. Review missed options."];
+        } else {
+          feedback = ["Incorrect. Review all correct options."];
+        }
+
+        result = { score, feedback };
       }
 
-      // 🔥 NEW: CODE HANDLING
+      // ===== CODE =====
       else if (question.type === "code") {
-        result = {
-          score: answer.length > 20 ? 6 : 3,
-          feedback: [
-            "Basic code evaluation",
-            "Execution engine not integrated yet"
-          ]
-        };
+        if (!answer || answer.length < 10) {
+          result = {
+            score: 1,
+            feedback: [
+              "Code is too short or invalid.",
+              "Provide a complete solution."
+            ]
+          };
+        } else {
+          result = {
+            score: 5,
+            feedback: [
+              "Basic code detected.",
+              "Execution engine not integrated yet.",
+              "Consider edge cases and optimization."
+            ]
+          };
+        }
       }
 
+      // ===== STORE ANSWER =====
       const storedAnswer = Array.isArray(answer)
         ? answer.join(", ")
         : answer;
