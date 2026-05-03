@@ -37,5 +37,8 @@ export const register = (data: any) =>
   API.post("/auth/register", data);
 export const getHistory=()=>
   API.get("/history");
-
+export const liveEvaluate=(data:any)=>
+{
+  axios.post("http://localhost:3001/live-eval",data,);
+}
 export default API;

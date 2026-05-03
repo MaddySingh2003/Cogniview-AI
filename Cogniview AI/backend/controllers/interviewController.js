@@ -198,7 +198,32 @@ module.exports = {
       res.status(500).json({ error: "Answer failed" });
     }
   },
+liveEvaluate: async(req,res)=>{
+    try{
+      const {question, answer, modelAnswer} = req.body;
+      if(!answer ||answer.length<5){
+        return res.json({
+score:0,
+feedback:["Start typing your answer..."]
+        });
+      }
+      const result=await evaluateText(
+        question,
+        answer,
+        modelAnswer,
+      );
+      res.json(result);
 
+
+    }
+    catch(err){
+      console.error("Live Eval Error:", err);
+      res.status(500).json({
+        score:0,
+        feedback:["Evaluation failed. Try again later."]
+      });
+    }
+  },
   // ================= RESULT =================
   getResult: async (req, res) => {
     try {
@@ -265,4 +290,7 @@ module.exports = {
       res.status(500).json({ error: "Result failed" });
     }
   }
+
+
+  
 };

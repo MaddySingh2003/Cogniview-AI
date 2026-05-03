@@ -20,5 +20,6 @@ router.post(
 router.post("/answer", auth, controller.submitAnswer);
 router.get("/result/:sessionId", auth, controller.getResult);
 router.get("/history", auth, userController.getHistory);
+router.post("/live-eval",auth,controller.liveEvaluate);
 
 module.exports = router;

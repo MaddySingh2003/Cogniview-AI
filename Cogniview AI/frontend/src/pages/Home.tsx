@@ -8,7 +8,7 @@ export default function Home() {
   const [role, setRole] = useState("backend");
   const [level, setLevel] = useState("easy");
   const [loading, setLoading] = useState(false);
-  const [resume, setResume] = useState(null);
+  const [resume, setResume] = useState<File | null>(null);
   const [codingEnabled, setCodingEnabled] = useState(false);
 
   const [voiceMode, setVoiceMode] = useState(

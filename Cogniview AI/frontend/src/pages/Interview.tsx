@@ -1,10 +1,12 @@
 import { useLocation, useNavigate } from "react-router-dom";
 import { useEffect, useRef, useState } from "react";
-import { submitAnswer } from "../api/api";
+import { liveEvaluate, submitAnswer } from "../api/api";
 
 export default function Interview() {
   const { state } = useLocation();
   const navigate = useNavigate();
+  const [liveScore, setLiveScore] = useState<number | null>(null);
+  const [liveFeedback, setLiveFeedback] = useState<string[]>([]);
 
   const [question, setQuestion] = useState(state?.question);
   const [answer, setAnswer] = useState<any>("");
@@ -14,6 +16,35 @@ export default function Interview() {
   const recognitionRef = useRef<any>(null);
 
   const sessionId = state?.sessionId;
+ useEffect(() => {
+  if (!answer || answer.length < 5) return;
+
+  // ✅ ONLY for text questions (important optimization)
+  if (question?.type !== "text") return;
+
+  const timeout = setTimeout(async () => {
+    try {
+      const res = await liveEvaluate({
+        question: question.question,
+        answer,
+        modelAnswer: question.modelAnswer
+      });
+
+      setLiveScore(res.data.score);
+      setLiveFeedback(res.data.feedback);
+
+    } catch (err) {
+      console.error(err);
+    }
+  }, 800);
+
+  return () => clearTimeout(timeout);
+
+}, [answer, question]);
+useEffect(() => {
+  setLiveScore(null);
+  setLiveFeedback([]);
+}, [question]);
 
   // ✅ safer voice flag
   const voiceMode =
