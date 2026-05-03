@@ -15,8 +15,10 @@ export default function Interview() {
 
   const sessionId = state?.sessionId;
 
-  // ✅ SINGLE SOURCE OF TRUTH
-  const voiceMode = localStorage.getItem("voiceMode") === "true";
+  // ✅ safer voice flag
+  const voiceMode =
+    state?.voiceEnabled ??
+    localStorage.getItem("voiceMode") === "true";
 
   // ================= VOICE SETUP =================
   useEffect(() => {
@@ -40,7 +42,9 @@ export default function Interview() {
 
     recog.onresult = (e: any) => {
       const transcript = e.results[0][0].transcript;
-      setAnswer((prev: string) => (prev ? prev + " " + transcript : transcript));
+      setAnswer((prev: string) =>
+        prev ? prev + " " + transcript : transcript
+      );
     };
 
     recog.onend = () => setListening(false);
@@ -56,7 +60,7 @@ export default function Interview() {
   const speak = (text: string) => {
     if (!voiceMode || !window.speechSynthesis) return;
 
-    window.speechSynthesis.cancel(); // stop previous
+    window.speechSynthesis.cancel();
     const speech = new SpeechSynthesisUtterance(text);
     speech.rate = 0.95;
     speech.pitch = 1;
@@ -69,23 +73,36 @@ export default function Interview() {
     if (question?.question) {
       speak(question.question);
     }
+
+    // ✅ stop speech on unmount / change
+    return () => {
+      window.speechSynthesis.cancel();
+    };
   }, [question]);
 
   // ================= MIC CONTROL =================
   const toggleMic = () => {
     if (!recognitionRef.current) return;
 
-    if (listening) {
-      recognitionRef.current.stop();
-    } else {
-      recognitionRef.current.start();
+    try {
+      if (listening) {
+        recognitionRef.current.stop();
+      } else {
+        recognitionRef.current.start();
+      }
+    } catch (err) {
+      console.warn("Mic error:", err);
     }
   };
 
   // ================= SUBMIT =================
   const handleSubmit = async () => {
     try {
-      if (!answer || (Array.isArray(answer) && answer.length === 0)) {
+      if (
+        !answer ||
+        (typeof answer === "string" && answer.trim() === "") ||
+        (Array.isArray(answer) && answer.length === 0)
+      ) {
         alert("Please provide an answer");
         return;
       }
@@ -162,7 +179,7 @@ export default function Interview() {
             {question.question}
           </h2>
 
-          {/* TEXT INPUT */}
+          {/* TEXT */}
           {question.type === "text" && (
             <>
               <textarea
@@ -174,10 +191,8 @@ export default function Interview() {
                 onChange={(e) => setAnswer(e.target.value)}
               />
 
-              {/* 🎤 MIC BUTTON */}
               {voiceMode && (
                 <div className="mt-4 flex items-center gap-3">
-
                   <button
                     onClick={toggleMic}
                     className={`px-5 py-2 rounded-full font-semibold transition ${
@@ -221,53 +236,57 @@ export default function Interview() {
               ))}
             </div>
           )}
+
           {/* MSQ */}
-{question.type === "msq" && (
-  <div className="space-y-3">
-    {question.options.map((opt: string) => (
-      <label
-        key={opt}
-        className={`flex items-center gap-3 p-4 rounded-xl border cursor-pointer transition ${
-          Array.isArray(answer) && answer.includes(opt)
-            ? "bg-gradient-to-r from-[#E83464]/20 to-[#8E2DE2]/20 border-[#8E2DE2]"
-            : "bg-white/5 border-white/10 hover:bg-white/10"
-        }`}
-      >
-        <input
-          type="checkbox"
-          checked={Array.isArray(answer) && answer.includes(opt)}
-          onChange={(e) => {
-            if (e.target.checked) {
-              setAnswer((prev: any) => [...(prev || []), opt]);
-            } else {
-              setAnswer((prev: any) =>
-                prev.filter((a: string) => a !== opt)
-              );
-            }
-          }}
-        />
-        {opt}
-      </label>
-    ))}
-  </div>
-)}
+          {question.type === "msq" && (
+            <div className="space-y-3">
+              {question.options.map((opt: string) => (
+                <label
+                  key={opt}
+                  className={`flex items-center gap-3 p-4 rounded-xl border cursor-pointer transition ${
+                    Array.isArray(answer) && answer.includes(opt)
+                      ? "bg-gradient-to-r from-[#E83464]/20 to-[#8E2DE2]/20 border-[#8E2DE2]"
+                      : "bg-white/5 border-white/10 hover:bg-white/10"
+                  }`}
+                >
+                  <input
+                    type="checkbox"
+                    checked={Array.isArray(answer) && answer.includes(opt)}
+                    onChange={(e) => {
+                      if (e.target.checked) {
+                        setAnswer((prev: any) => [...(prev || []), opt]);
+                      } else {
+                        setAnswer((prev: any) =>
+                          prev.filter((a: string) => a !== opt)
+                        );
+                      }
+                    }}
+                  />
+                  {opt}
+                </label>
+              ))}
+            </div>
+          )}
+
+          {/* CODE */}
+          {question.type === "code" && (
+            <textarea
+              rows={8}
+              className="w-full p-4 rounded-xl bg-black/60 border border-white/10 font-mono text-sm"
+              placeholder="Write your code here..."
+              value={answer}
+              onChange={(e) => setAnswer(e.target.value)}
+            />
+          )}
 
           {/* SUBMIT */}
           <button
             onClick={handleSubmit}
             disabled={loading}
             className="w-full mt-8 py-3 rounded-full font-semibold text-lg 
-            bg-gradient-to-r from-[#E83464] to-[#8E2DE2] 
-            hover:opacity-90 transition flex items-center justify-center"
+            bg-gradient-to-r from-[#E83464] to-[#8E2DE2]"
           >
-            {loading ? (
-              <div className="flex gap-2 items-center">
-                <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                Evaluating...
-              </div>
-            ) : (
-              "Submit Answer →"
-            )}
+            {loading ? "Evaluating..." : "Submit Answer →"}
           </button>
 
         </div>

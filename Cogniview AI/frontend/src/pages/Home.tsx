@@ -22,22 +22,36 @@ const toggleVoice = () => {
 };
 
   const handleStart = async () => {
-    try {
-      setLoading(true);
-      const res = await startInterview({ role, level });
+  try {
+    setLoading(true);
 
-      navigate("/interview", {
-        state: {
-          sessionId: res.data.sessionId,
-          question: res.data.question
-        }
-      });
-    } catch {
-      alert("Server busy. Try again.");
-    } finally {
-      setLoading(false);
+    const formData = new FormData();
+    formData.append("role", role);
+    formData.append("level", level);
+    formData.append("codingEnabled", String(codingEnabled));
+
+    if (resume) {
+      formData.append("resume", resume);
     }
-  };
+
+    const res = await startInterview(formData);
+
+    navigate("/interview", {
+      state: {
+        sessionId: res.data.sessionId,
+        question: res.data.question,
+        voiceEnabled: voiceMode,
+        codingEnabled
+      }
+    });
+
+  } catch (err) {
+    console.error(err);
+    alert("Server busy. Try again.");
+  } finally {
+    setLoading(false);
+  }
+};
 
   return (
     <div className="min-h-screen text-white relative overflow-hidden">
@@ -193,39 +207,29 @@ const toggleVoice = () => {
       />
 
       {/* 🔥 SAME ROW CONTROLS */}
-      <div className="flex items-center justify-between gap-4 mb-6">
+         <div className="flex items-center justify-between gap-4 mb-6">
 
-        {/* Voice Toggle */}
-        <button
-          onClick={toggleVoice}
-          className={`flex-1 py-2 rounded-xl text-sm font-medium transition-all ${
-            voiceMode
-              ? "bg-green-500/90 shadow-lg shadow-green-500/30"
-              : "bg-red-500/90 shadow-lg shadow-red-500/30"
-          }`}
-        >
-          🎙 Voice: {voiceMode ? "ON" : "OFF"}
-        </button>
+              {/* Voice */}
+              <button
+                onClick={toggleVoice}
+                className={`flex-1 py-2 rounded-xl text-sm font-medium ${
+                  voiceMode ? "bg-green-500" : "bg-red-500"
+                }`}
+              >
+                🎙 Voice: {voiceMode ? "ON" : "OFF"}
+              </button>
 
-        {/* Coding Toggle */}
-        <div className="flex items-center justify-between flex-1 bg-white/5 border border-white/10 px-4 py-2 rounded-xl">
-          <span className="text-sm">Coding</span>
+              {/* Coding */}
+              <button
+                onClick={() => setCodingEnabled(!codingEnabled)}
+                className={`flex-1 py-2 rounded-xl text-sm font-medium ${
+                  codingEnabled ? "bg-green-500" : "bg-red-500"
+                }`}
+              >
+                💻 Coding: {codingEnabled ? "ON" : "OFF"}
+              </button>
 
-          <button
-            onClick={() => setCodingEnabled(!codingEnabled)}
-            className={`w-11 h-6 rounded-full relative transition ${
-              codingEnabled ? "bg-green-500" : "bg-gray-500"
-            }`}
-          >
-            <span
-              className={`absolute top-1 left-1 w-4 h-4 bg-white rounded-full transition ${
-                codingEnabled ? "translate-x-5" : ""
-              }`}
-            />
-          </button>
-        </div>
-
-      </div>
+            </div>
 
       {/* CTA */}
       <button

@@ -1,5 +1,3 @@
-////interviewController.js///
-
 const { generateQuestions } = require("../services/llmService");
 const Session = require("../models/Session");
 const { v4: uuidv4 } = require("uuid");
@@ -11,12 +9,11 @@ module.exports = {
   // ================= START =================
   startInterview: async (req, res) => {
     try {
-      const { role, level } = req.body;
+      const { role, level, codingEnabled } = req.body; // ✅ NEW
       const userId = req.user.userId;
 
       let resumeText = "";
 
-      // ✅ HANDLE RESUME
       if (req.file) {
         try {
           resumeText = await extractText(req.file.buffer);
@@ -31,16 +28,20 @@ module.exports = {
         }
       }
 
-      // ✅ GENERATE QUESTIONS
+      // ✅ PASS CODING FLAG
       let result;
       try {
-        result = await generateQuestions(role, level, resumeText);
+        result = await generateQuestions(
+          role,
+          level,
+          resumeText,
+          codingEnabled === "true" // 🔥 important
+        );
       } catch (err) {
         console.error("LLM FAILED:", err.message);
         return res.status(500).json({ error: "AI generation failed" });
       }
 
-      // ✅ CREATE SESSION
       const session = new Session({
         sessionId: uuidv4(),
         userId,
@@ -70,7 +71,6 @@ module.exports = {
       const { sessionId, answer } = req.body;
       const userId = req.user.userId;
 
-      // ✅ FIX: user isolation
       const session = await Session.findOne({
         sessionId,
         userId
@@ -102,13 +102,17 @@ module.exports = {
 
       let result;
 
+      // ===== TEXT =====
       if (question.type === "text") {
         result = await evaluateText(
           question.question,
           answer,
           question.modelAnswer
         );
-      } else if (question.type === "mcq") {
+      }
+
+      // ===== MCQ =====
+      else if (question.type === "mcq") {
         const correct = question.correctAnswer === answer;
 
         result = {
@@ -117,7 +121,10 @@ module.exports = {
             ? ["Correct answer"]
             : ["Incorrect, revise concept"]
         };
-      } else if (question.type === "msq") {
+      }
+
+      // ===== MSQ =====
+      else if (question.type === "msq") {
         const selected = Array.isArray(answer) ? answer : [];
         const correct = question.correctAnswers || [];
 
@@ -131,6 +138,17 @@ module.exports = {
         result = {
           score,
           feedback: ["Partial correctness"]
+        };
+      }
+
+      // 🔥 NEW: CODE HANDLING
+      else if (question.type === "code") {
+        result = {
+          score: answer.length > 20 ? 6 : 3,
+          feedback: [
+            "Basic code evaluation",
+            "Execution engine not integrated yet"
+          ]
         };
       }
 
@@ -211,10 +229,6 @@ module.exports = {
         if (tAvg <= 4) weakAreas.push(topic);
         else if (tAvg >= 6) strongAreas.push(topic);
       }
-
-      if (!weakAreas.length) weakAreas.push("General");
-      if (!strongAreas.length && avg > 5)
-        strongAreas.push("Basic Concepts");
 
       let verdict = "Needs Improvement";
       if (avg >= 7) verdict = "Strong Candidate";

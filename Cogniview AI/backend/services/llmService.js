@@ -3,56 +3,80 @@ require("dotenv").config();
 const GEMINI_KEY = process.env.GEMINI_API_KEY;
 const HF_KEY = process.env.HUGGINGFACE_API_KEY;
 
-// 🔥 MODEL CHAIN
 const GEMINI_MODELS = [
   "gemini-2.5-flash",
   "gemini-2.5-flash-lite",
   "gemini-2.0-flash"
 ];
 
-const HF_MODEL = "mistralai/Mistral-7B-Instruct-v0.2";
-
+const HF_MODEL = "HuggingFaceH4/zephyr-7b-beta";
 // ================= PROMPT =================
-function buildPrompt(role, level, type) {
-  return `
-  Act like a interviewer,
-Generate EXACTLY 5 ${type.toUpperCase()} interview questions.
+function buildPrompt(role, level, resumeText = "", codingEnabled = false) {
+
+  // 🔥 RESUME MODE (priority)
+  if (resumeText && resumeText.length > 50) {
+    return `
+You are an AI interviewer.
+
+Generate EXACTLY 15 questions in JSON.
+
+Based on this resume:
+${resumeText}
+
+Focus on:
+- Projects
+- Skills
+- Tools
+
+Distribution:
+- 5 TEXT
+- 5 MCQ
+- 5 MSQ
+
+Return ONLY JSON array.
+`;
+  }
+
+  // 🔥 CODING MODE
+  if (codingEnabled) {
+    return `
+Generate EXACTLY 15 questions.
 
 Role: ${role}
 Level: ${level}
 
-RULES:
-- Return ONLY JSON array
-- EXACTLY 5 questions
-- Each MUST include "topic" (1-2 words, like API, DB, Auth)
+Distribution:
+- 5 TEXT
+- 4 MCQ
+- 3 MSQ
+- 3 CODE
 
-FORMAT:
-
-TEXT:
+CODE FORMAT:
 {
- "type":"text",
+ "type":"code",
  "question":"...",
- "modelAnswer":"...",
- "topic":"..."
+ "constraints":"...",
+ "example":"...",
+ "topic":"DSA"
 }
 
-MCQ:
-{
- "type":"mcq",
- "question":"...",
- "options":["A","B","C","D"],
- "correctAnswer":"A",
- "topic":"..."
-}
+Return ONLY JSON.
+`;
+  }
 
-MSQ:
-{
- "type":"msq",
- "question":"...",
- "options":["A","B","C","D"],
- "correctAnswers":["A","C"],
- "topic":"..."
-}
+  // 🔥 NORMAL MODE
+  return `
+Generate EXACTLY 15 questions.
+
+Role: ${role}
+Level: ${level}
+
+Distribution:
+- 5 TEXT
+- 5 MCQ
+- 5 MSQ
+
+Return ONLY JSON.
 `;
 }
 
@@ -63,20 +87,22 @@ function safeParse(text) {
   const start = clean.indexOf("[");
   const end = clean.lastIndexOf("]");
 
-  if (start === -1 || end === -1) throw new Error("Invalid JSON");
+  if (start === -1 || end === -1) {
+    throw new Error("Invalid JSON format");
+  }
 
   return JSON.parse(clean.slice(start, end + 1));
 }
 
 // ================= VALIDATION =================
-function validate(qs) {
-  if (!Array.isArray(qs) || qs.length !== 5)
-    throw new Error("Invalid count");
+function validate(qs, expectedCount) {
+  if (!Array.isArray(qs) || qs.length !== expectedCount) {
+    throw new Error("Invalid question count");
+  }
 
   qs.forEach(q => {
     if (!q.question) throw new Error("Missing question");
-    if (!q.topic || q.topic.length < 2)
-      throw new Error("Missing topic");
+    if (!q.topic) throw new Error("Missing topic");
   });
 
   return qs;
@@ -89,113 +115,136 @@ function normalize(qs, level, offset = 0) {
     type: q.type || "text",
     question: q.question,
     modelAnswer: q.modelAnswer || "",
-    topic: q.topic, // 🔥 NO "General"
+    topic: q.topic || "General",
     difficulty: level,
+
     options: q.options || [],
     correctAnswer: q.correctAnswer || null,
-    correctAnswers: q.correctAnswers || []
+    correctAnswers: q.correctAnswers || [],
+
+    // 🔥 CODE SUPPORT
+    constraints: q.constraints || "",
+    example: q.example || ""
   }));
 }
 
 // ================= GEMINI =================
-async function callGemini(prompt, model) {
-  const res = await fetch(
-    `https://generativelanguage.googleapis.com/v1/models/${model}:generateContent?key=${GEMINI_KEY}`,
-    {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        contents: [{ parts: [{ text: prompt }] }]
-      })
-    }
-  );
-
-  if (!res.ok) throw new Error(`${model} ${res.status}`);
-
-  const data = await res.json();
-
-  const text =
-    data.candidates?.[0]?.content?.parts?.[0]?.text;
-
-  if (!text) throw new Error("Empty Gemini response");
-
-  return validate(safeParse(text));
-}
-
-// ================= HF =================
-async function callHF(prompt) {
-  const res = await fetch(
-    `https://api-inference.huggingface.co/models/${HF_MODEL}`,
-    {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${HF_KEY}`,
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify({
-        inputs: prompt,
-        parameters: {
-          max_new_tokens: 700,
-          temperature: 0.3
-        }
-      })
-    }
-  );
-
-  const contentType = res.headers.get("content-type");
-
-  if (!contentType || !contentType.includes("application/json"))
-    throw new Error("HF HTML");
-
-  const data = await res.json();
-
-  if (data.error) throw new Error(data.error);
-
-  const text = data[0]?.generated_text;
-
-  if (!text) throw new Error("Empty HF");
-
-  return validate(safeParse(text));
-}
-
-// ================= GENERATE BLOCK =================
-async function generateBlock(prompt) {
-  // 🔥 GEMINI FIRST
-  for (let model of GEMINI_MODELS) {
+async function callGemini(prompt, model, expectedCount, retries = 2) {
+  for (let i = 0; i < retries; i++) {
     try {
-      console.log(`⚡ Gemini → ${model}`);
-      return await callGemini(prompt, model);
+      console.log(`⚡ Gemini → ${model} (try ${i + 1})`);
+
+      const res = await fetch(
+        `https://generativelanguage.googleapis.com/v1/models/${model}:generateContent?key=${GEMINI_KEY}`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            contents: [{ parts: [{ text: prompt }] }]
+          })
+        }
+      );
+
+      if (!res.ok) {
+        const errText = await res.text();
+        throw new Error(`${model} ${res.status} → ${errText}`);
+      }
+
+      const data = await res.json();
+
+      const text =
+        data.candidates?.[0]?.content?.parts?.[0]?.text;
+
+      if (!text) throw new Error("Empty Gemini response");
+
+      return validate(safeParse(text), expectedCount);
+
     } catch (err) {
-      console.warn(`❌ ${model}`, err.message);
+      console.warn(`❌ ${model} failed:`, err.message);
       await new Promise(r => setTimeout(r, 1500));
     }
   }
 
-  // 🔥 HF FALLBACK
-  try {
-    console.log("⚡ HF fallback...");
-    return await callHF(prompt);
-  } catch (err) {
-    console.warn("❌ HF failed:", err.message);
+  throw new Error(`${model} failed after retries`);
+}
+
+// ================= HF =================
+async function callHF(prompt, expectedCount, retries = 3) {
+  for (let i = 0; i < retries; i++) {
+    try {
+      const res = await fetch(
+        `https://api-inference.huggingface.co/models/${HF_MODEL}`,
+        {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${HF_KEY}`,
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({
+            inputs: prompt,
+            parameters: {
+              max_new_tokens: 800,
+              temperature: 0.3
+            }
+          })
+        }
+      );
+
+      const contentType = res.headers.get("content-type");
+
+      if (!contentType || !contentType.includes("application/json")) {
+        throw new Error("HF returned HTML (model loading)");
+      }
+
+      const data = await res.json();
+
+      if (data.error) {
+        throw new Error(data.error);
+      }
+
+      const text = data[0]?.generated_text;
+
+      if (!text) throw new Error("Empty HF");
+
+      return validate(safeParse(text), expectedCount);
+
+    } catch (err) {
+      console.warn("❌ HF retry:", err.message);
+      await new Promise(r => setTimeout(r, 3000));
+    }
   }
 
-  throw new Error("All LLM providers failed");
+  throw new Error("HF failed");
+}
+// ================= GENERATE =================
+async function generateBlock(prompt, expectedCount) {
+
+  // 🔥 Try ALL Gemini models properly
+  for (let model of GEMINI_MODELS) {
+    try {
+      return await callGemini(prompt, model, expectedCount);
+    } catch (err) {
+      console.warn(`Model failed → ${model}`);
+    }
+  }
+
+  // 🔥 HF LAST (NOT primary fallback)
+  console.log("⚡ HF fallback...");
+
+  return await callHF(prompt, expectedCount);
 }
 
 // ================= MAIN =================
-async function generateQuestions(role, level) {
+async function generateQuestions(role, level, resumeText = "", codingEnabled = false) {
   try {
-    const textQ = await generateBlock(buildPrompt(role, level, "text"));
-    const mcqQ = await generateBlock(buildPrompt(role, level, "mcq"));
-    const msqQ = await generateBlock(buildPrompt(role, level, "msq"));
+    const prompt = buildPrompt(role, level, resumeText, codingEnabled);
 
-    const all = [
-      ...normalize(textQ, level, 0),
-      ...normalize(mcqQ, level, 5),
-      ...normalize(msqQ, level, 10)
-    ];
+    const qs = await generateBlock(prompt, 15);
 
-    return { questions: all, source: "llm" };
+    return {
+      questions: normalize(qs, level),
+      source: "llm"
+    };
 
   } catch (err) {
     console.error("🔥 HARD FAIL:", err.message);
