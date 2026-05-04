@@ -17,8 +17,7 @@ export default function Interview() {
 
   const sessionId = state?.sessionId;
  useEffect(() => {
- if (!answer || (typeof answer === "string" && answer.trim().length < 5)) return;
-
+ if (typeof answer !== "string" || answer.trim().length < 5) return;
   // ✅ ONLY for text questions (important optimization)
   if (question?.type !== "text") return;
 

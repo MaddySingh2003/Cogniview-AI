@@ -3,6 +3,7 @@ const Session = require("../models/Session");
 const { v4: uuidv4 } = require("uuid");
 const { evaluateText } = require("../services/mlService");
 const { extractText } = require("../services/resumeParser");
+const { evaluateCode } = require("../services/codeEvaluate");
 
 module.exports = {
 
@@ -148,26 +149,12 @@ module.exports = {
       }
 
       // ===== CODE =====
-      else if (question.type === "code") {
-        if (!answer || answer.length < 10) {
-          result = {
-            score: 1,
-            feedback: [
-              "Code is too short or invalid.",
-              "Provide a complete solution."
-            ]
-          };
-        } else {
-          result = {
-            score: 5,
-            feedback: [
-              "Basic code detected.",
-              "Execution engine not integrated yet.",
-              "Consider edge cases and optimization."
-            ]
-          };
-        }
-      }
+     else if (question.type === "code") {
+  result = {
+    score: 0,
+    feedback: ["Code will be evaluated after interview."]
+  };
+}
 
       // ===== STORE ANSWER =====
       const storedAnswer = Array.isArray(answer)
@@ -198,6 +185,7 @@ module.exports = {
       res.status(500).json({ error: "Answer failed" });
     }
   },
+  
 liveEvaluate: async(req,res)=>{
     try{
       const {question, answer, modelAnswer} = req.body;
@@ -248,8 +236,34 @@ feedback:["Start typing your answer..."]
         });
       }
 
-      const scores = session.answers.map(a => a.score || 0);
+  // ================= CODE EVALUATION =================
+for (let ans of session.answers) {
+  const q = session.questions.find(q => q.id === ans.questionId);
 
+  if (q?.type === "code") {
+    if (!q.expectedOutput) {
+      ans.score = 2;
+      ans.feedback = ["Expected output missing. Cannot evaluate code."];
+      continue;
+    }
+
+    const language = q.question.toLowerCase().includes("python")
+      ? "python"
+      : "javascript";
+
+    const evalResult = await evaluateCode(
+      ans.answer,
+      q.expectedOutput,
+      language
+    );
+
+    ans.score = evalResult.score;
+    ans.feedback = evalResult.feedback;
+  }
+}
+
+// NOW calculate scores AFTER evaluation
+const scores = session.answers.map(a => a.score || 0);
       const avg =
         scores.reduce((a, b) => a + b, 0) / scores.length;
 

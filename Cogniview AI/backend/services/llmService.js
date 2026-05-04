@@ -24,29 +24,28 @@ Each object MUST follow this schema:
   "question": "string",
   "topic": "string",
   "difficulty": "${level}",
-  "options": ["string"],        // for mcq/msq only
-  "correctAnswer": "string",    // for mcq only
-  "correctAnswers": ["string"], // for msq only
-  "modelAnswer": "string",      // for text
-  "constraints": "string",      // for code
-  "example": "string"           // for code
+  "options": ["string"],
+  "correctAnswer": "string",
+  "correctAnswers": ["string"],
+  "modelAnswer": "string",
+  "constraints": "string",
+  "example": "string",
+  "expectedOutput": "string"
 }
 
 Rules:
 - ALWAYS include "topic"
-- ALWAYS include correctAnswer / correctAnswers when needed
+- For CODE questions ALWAYS include "expectedOutput"
+- Return ONLY JSON
 - No explanation
-- Return ONLY JSON array
 - No markdown
-- No backticks
 
 Role: ${role}
 Level: ${level}
 
 ${resumeText ? `Resume:\n${resumeText}` : ""}
 
-${codingEnabled ? "Include EXACTLY 3 CODE questions" : ""}
-
+${codingEnabled ? "Include EXACTLY 3 CODE questions." : ""}
 `;
 }
 
@@ -92,10 +91,23 @@ function normalize(qs, level, offset = 0) {
     correctAnswer: q.correctAnswer || null,
     correctAnswers: q.correctAnswers || [],
 
-    // 🔥 CODE SUPPORT
     constraints: q.constraints || "",
-    example: q.example || ""
+    example: q.example || "",
+
+    // ✅ CRITICAL FIX
+    expectedOutput:
+      q.expectedOutput ||
+      extractExpectedOutputFromExample(q.example) ||
+      ""
   }));
+}
+
+// 🔥 helper
+function extractExpectedOutputFromExample(example = "") {
+  if (!example) return "";
+
+  const match = example.match(/Output:\s*(.*)/i);
+  return match ? match[1].trim() : "";
 }
 
 // ================= GEMINI =================
