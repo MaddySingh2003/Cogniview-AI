@@ -12,71 +12,41 @@ const GEMINI_MODELS = [
 const HF_MODEL = "HuggingFaceH4/zephyr-7b-beta";
 // ================= PROMPT =================
 function buildPrompt(role, level, resumeText = "", codingEnabled = false) {
-
-  // 🔥 RESUME MODE (priority)
-  if (resumeText && resumeText.length > 50) {
-    return `
+  return `
 You are an AI interviewer.
 
-Generate EXACTLY 15 questions in JSON.
+Generate EXACTLY 15 questions in STRICT JSON ARRAY.
 
-Based on this resume:
-${resumeText}
+Each object MUST follow this schema:
 
-Focus on:
-- Projects
-- Skills
-- Tools
-
-Distribution:
-- 5 TEXT
-- 5 MCQ
-- 5 MSQ
-
-Return ONLY JSON array.
-`;
-  }
-
-  // 🔥 CODING MODE
-  if (codingEnabled) {
-    return `
-Generate EXACTLY 15 questions.
-
-Role: ${role}
-Level: ${level}
-
-Distribution:
-- 5 TEXT
-- 4 MCQ
-- 3 MSQ
-- 3 CODE
-
-CODE FORMAT:
 {
- "type":"code",
- "question":"...",
- "constraints":"...",
- "example":"...",
- "topic":"DSA"
+  "type": "text | mcq | msq | code",
+  "question": "string",
+  "topic": "string",
+  "difficulty": "${level}",
+  "options": ["string"],        // for mcq/msq only
+  "correctAnswer": "string",    // for mcq only
+  "correctAnswers": ["string"], // for msq only
+  "modelAnswer": "string",      // for text
+  "constraints": "string",      // for code
+  "example": "string"           // for code
 }
 
-Return ONLY JSON.
-`;
-  }
-
-  // 🔥 NORMAL MODE
-  return `
-Generate EXACTLY 15 questions.
+Rules:
+- ALWAYS include "topic"
+- ALWAYS include correctAnswer / correctAnswers when needed
+- No explanation
+- Return ONLY JSON array
+- No markdown
+- No backticks
 
 Role: ${role}
 Level: ${level}
 
-Distribution:
-- 5 TEXT
-- 5 MCQ
-- 5 MSQ
+${resumeText ? `Resume:\n${resumeText}` : ""}
 
-Return ONLY JSON.
+${codingEnabled ? "Include EXACTLY 3 CODE questions" : ""}
+
 `;
 }
 
