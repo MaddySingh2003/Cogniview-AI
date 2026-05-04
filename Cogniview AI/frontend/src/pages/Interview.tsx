@@ -17,7 +17,7 @@ export default function Interview() {
 
   const sessionId = state?.sessionId;
  useEffect(() => {
-  if (!answer || answer.length < 5) return;
+ if (!answer || (typeof answer === "string" && answer.trim().length < 5)) return;
 
   // ✅ ONLY for text questions (important optimization)
   if (question?.type !== "text") return;
@@ -212,39 +212,66 @@ useEffect(() => {
 
           {/* TEXT */}
           {question.type === "text" && (
-            <>
-              <textarea
-                className="w-full p-4 rounded-xl bg-black/40 border border-white/10 
-                focus:outline-none focus:ring-2 focus:ring-[#8E2DE2] transition"
-                rows={5}
-                placeholder="Type or speak your answer..."
-                value={answer}
-                onChange={(e) => setAnswer(e.target.value)}
-              />
+  <>
+    <textarea
+      className="w-full p-4 rounded-xl bg-black/40 border border-white/10 
+      focus:outline-none focus:ring-2 focus:ring-[#8E2DE2] transition"
+      rows={5}
+      placeholder="Type or speak your answer..."
+      value={answer}
+      onChange={(e) => setAnswer(e.target.value)}
+    />
 
-              {voiceMode && (
-                <div className="mt-4 flex items-center gap-3">
-                  <button
-                    onClick={toggleMic}
-                    className={`px-5 py-2 rounded-full font-semibold transition ${
-                      listening
-                        ? "bg-red-500 animate-pulse"
-                        : "bg-gradient-to-r from-[#E83464] to-[#8E2DE2]"
-                    }`}
-                  >
-                    {listening ? "🎙 Listening..." : "🎤 Speak"}
-                  </button>
+    {/* 🔥 LIVE AI FEEDBACK */}
+    {liveScore !== null && (
+      <div className="mt-4 p-4 rounded-xl bg-white/5 border border-white/10">
+        
+        <div className="flex items-center justify-between mb-2">
+          <p className="text-sm text-gray-400">Live AI Score</p>
+          <span
+            className={`text-lg font-bold ${
+              liveScore >= 7
+                ? "text-green-400"
+                : liveScore >= 4
+                ? "text-yellow-400"
+                : "text-red-400"
+            }`}
+          >
+            {liveScore}/10
+          </span>
+        </div>
 
-                  {answer && (
-                    <span className="text-sm text-gray-400">
-                      Voice input active
-                    </span>
-                  )}
-                </div>
-              )}
-            </>
-          )}
+        <ul className="text-sm text-gray-300 space-y-1">
+          {liveFeedback.map((f, i) => (
+            <li key={i}>• {f}</li>
+          ))}
+        </ul>
+      </div>
+    )}
 
+    {/* VOICE */}
+    {voiceMode && (
+      <div className="mt-4 flex items-center gap-3">
+        <button
+          onClick={toggleMic}
+          className={`px-5 py-2 rounded-full font-semibold transition ${
+            listening
+              ? "bg-red-500 animate-pulse"
+              : "bg-gradient-to-r from-[#E83464] to-[#8E2DE2]"
+          }`}
+        >
+          {listening ? "🎙 Listening..." : "🎤 Speak"}
+        </button>
+
+        {answer && (
+          <span className="text-sm text-gray-400">
+            Voice input active
+          </span>
+        )}
+      </div>
+    )}
+  </>
+)}
           {/* MCQ */}
           {question.type === "mcq" && (
             <div className="space-y-3">
