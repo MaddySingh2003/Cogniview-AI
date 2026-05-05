@@ -4,13 +4,14 @@ const { v4: uuidv4 } = require("uuid");
 const { evaluateText } = require("../services/mlService");
 const { extractText } = require("../services/resumeParser");
 const { evaluateCode } = require("../services/codeEvaluate");
+const { evaluateHR } = require("../services/mlService");
 
 module.exports = {
 
   // ================= START =================
   startInterview: async (req, res) => {
     try {
-      const { role, level, codingEnabled } = req.body;
+      const { role, level, codingEnabled,hrMode } = req.body;
       const userId = req.user.userId;
 
       let resumeText = "";
@@ -35,7 +36,8 @@ module.exports = {
           role,
           level,
           resumeText,
-          codingEnabled === "true"
+          codingEnabled === "true",
+          hrMode === "true"
         );
       } catch (err) {
         console.error("LLM FAILED:", err.message);
@@ -154,6 +156,9 @@ module.exports = {
     score: 0,
     feedback: ["Code will be evaluated after interview."]
   };
+}
+else if (question.type === "hr") {
+  result = evaluateHR(answer);
 }
 
       // ===== STORE ANSWER =====

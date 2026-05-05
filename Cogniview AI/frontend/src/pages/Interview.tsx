@@ -5,52 +5,71 @@ import { liveEvaluate, submitAnswer } from "../api/api";
 export default function Interview() {
   const { state } = useLocation();
   const navigate = useNavigate();
-  const [liveScore, setLiveScore] = useState<number | null>(null);
-  const [liveFeedback, setLiveFeedback] = useState<string[]>([]);
 
   const [question, setQuestion] = useState(state?.question);
   const [answer, setAnswer] = useState<any>("");
   const [loading, setLoading] = useState(false);
 
+  const [liveScore, setLiveScore] = useState<number | null>(null);
+  const [liveFeedback, setLiveFeedback] = useState<string[]>([]);
+
   const [listening, setListening] = useState(false);
   const recognitionRef = useRef<any>(null);
 
   const sessionId = state?.sessionId;
- useEffect(() => {
- if (typeof answer !== "string" || answer.trim().length < 5) return;
-  // ✅ ONLY for text questions (important optimization)
-  if (question?.type !== "text") return;
 
-  const timeout = setTimeout(async () => {
-    try {
-      const res = await liveEvaluate({
-        question: question.question,
-        answer,
-        modelAnswer: question.modelAnswer
-      });
+  // ================= LIVE AI =================
+  useEffect(() => {
+    if (!question) return;
 
-      setLiveScore(res.data.score);
-      setLiveFeedback(res.data.feedback);
+    // Only text-like questions
+    if (!["text", "hr"].includes(question.type)) return;
 
-    } catch (err) {
-      console.error(err);
+    if (typeof answer !== "string" || answer.trim().length < 5) {
+      setLiveScore(null);
+      setLiveFeedback([]);
+      return;
     }
-  }, 800);
 
-  return () => clearTimeout(timeout);
+    const controller = new AbortController();
 
-}, [answer, question]);
-useEffect(() => {
-  setLiveScore(null);
-  setLiveFeedback([]);
-}, [question]);
+    const timeout = setTimeout(async () => {
+      try {
+        const res = await liveEvaluate({
+          question: question.question,
+          answer,
+          modelAnswer: question.modelAnswer
+        });
 
-  // ✅ safer voice flag
+        if (!controller.signal.aborted) {
+          setLiveScore(res.data.score);
+          setLiveFeedback(res.data.feedback);
+        }
+
+      } catch (err) {
+        console.error("Live eval error:", err);
+      }
+    }, 700);
+
+    return () => {
+      clearTimeout(timeout);
+      controller.abort();
+    };
+
+  }, [answer, question]);
+
+  // Reset on new question
+  useEffect(() => {
+    setAnswer("");
+    setLiveScore(null);
+    setLiveFeedback([]);
+  }, [question]);
+
+  // ================= VOICE =================
   const voiceMode =
     state?.voiceEnabled ??
     localStorage.getItem("voiceMode") === "true";
 
-  // ================= VOICE SETUP =================
   useEffect(() => {
     if (!voiceMode) return;
 
@@ -59,14 +78,13 @@ useEffect(() => {
       (window as any).webkitSpeechRecognition;
 
     if (!SpeechRecognition) {
-      console.warn("Speech Recognition not supported");
+      console.warn("Speech recognition not supported");
       return;
     }
 
     const recog = new SpeechRecognition();
     recog.lang = "en-US";
     recog.continuous = false;
-    recog.interimResults = false;
 
     recog.onstart = () => setListening(true);
 
@@ -81,45 +99,16 @@ useEffect(() => {
 
     recognitionRef.current = recog;
 
-    return () => {
-      recog.stop();
-    };
+    return () => recog.stop();
   }, [voiceMode]);
 
-  // ================= AI SPEAK =================
-  const speak = (text: string) => {
-    if (!voiceMode || !window.speechSynthesis) return;
-
-    window.speechSynthesis.cancel();
-    const speech = new SpeechSynthesisUtterance(text);
-    speech.rate = 0.95;
-    speech.pitch = 1;
-    speech.lang = "en-US";
-
-    window.speechSynthesis.speak(speech);
-  };
-
-  useEffect(() => {
-    if (question?.question) {
-      speak(question.question);
-    }
-
-    // ✅ stop speech on unmount / change
-    return () => {
-      window.speechSynthesis.cancel();
-    };
-  }, [question]);
-
-  // ================= MIC CONTROL =================
   const toggleMic = () => {
     if (!recognitionRef.current) return;
 
     try {
-      if (listening) {
-        recognitionRef.current.stop();
-      } else {
-        recognitionRef.current.start();
-      }
+      listening
+        ? recognitionRef.current.stop()
+        : recognitionRef.current.start();
     } catch (err) {
       console.warn("Mic error:", err);
     }
@@ -127,16 +116,16 @@ useEffect(() => {
 
   // ================= SUBMIT =================
   const handleSubmit = async () => {
-    try {
-      if (
-        !answer ||
-        (typeof answer === "string" && answer.trim() === "") ||
-        (Array.isArray(answer) && answer.length === 0)
-      ) {
-        alert("Please provide an answer");
-        return;
-      }
+    if (
+      !answer ||
+      (typeof answer === "string" && answer.trim() === "") ||
+      (Array.isArray(answer) && answer.length === 0)
+    ) {
+      alert("Please provide an answer");
+      return;
+    }
 
+    try {
       setLoading(true);
 
       const res = await submitAnswer({
@@ -148,141 +137,127 @@ useEffect(() => {
         navigate("/result", { state: { sessionId } });
       } else {
         setQuestion(res.data.nextQuestion);
-        setAnswer("");
       }
 
     } catch (err) {
-      console.error(err);
+      console.error("Submit error:", err);
     } finally {
       setLoading(false);
     }
   };
 
-  if (!question)
+  if (!question) {
     return (
       <div className="min-h-screen flex items-center justify-center text-gray-400 bg-[#070B14]">
         Loading...
       </div>
     );
+  }
 
   return (
     <div className="min-h-screen text-white flex justify-center items-center px-6 pt-20 relative overflow-hidden">
 
-      {/* 🔥 BACKGROUND */}
+      {/* BACKGROUND */}
       <div className="absolute inset-0 bg-[#070B14]" />
+      <div className="absolute w-[400px] h-[400px] bg-[#E83464]/20 blur-[120px] -top-40 -left-40 rounded-full" />
+      <div className="absolute w-[400px] h-[400px] bg-[#8E2DE2]/20 blur-[120px] -bottom-40 -right-40 rounded-full" />
 
-      <div className="absolute w-[400px] h-[400px] bg-[#E83464]/20 blur-[120px] rounded-full -top-40 -left-40 animate-pulse" />
-      <div className="absolute w-[400px] h-[400px] bg-[#8E2DE2]/20 blur-[120px] rounded-full -bottom-40 -right-40 animate-pulse" />
-
-      <div className="absolute inset-0 opacity-[0.05] bg-[linear-gradient(white_1px,transparent_1px),linear-gradient(to_right,white_1px,transparent_1px)] bg-[size:40px_40px]" />
-
-      {/* 🔥 MAIN */}
       <div className="relative z-10 w-full max-w-3xl">
 
-        {/* PROGRESS BAR */}
-        <div className="mb-6">
-          <div className="w-full h-1 bg-white/10 rounded-full overflow-hidden">
-            <div className="h-full w-1/3 bg-gradient-to-r from-[#E83464] to-[#8E2DE2] animate-pulse" />
-          </div>
+        {/* PROGRESS */}
+        <div className="mb-6 h-1 bg-white/10 rounded-full overflow-hidden">
+          <div className="h-full w-1/3 bg-gradient-to-r from-[#E83464] to-[#8E2DE2]" />
         </div>
 
         {/* CARD */}
-        <div className="bg-white/5 backdrop-blur-2xl border border-white/10 rounded-3xl p-8 shadow-[0_0_60px_rgba(142,45,226,0.15)]">
+        <div className="bg-white/5 backdrop-blur-2xl border border-white/10 rounded-3xl p-8 shadow-xl">
 
-          {/* META */}
-          <div className="flex flex-wrap gap-3 mb-6 text-xs">
-            <span className="px-3 py-1 rounded-full bg-[#8E2DE2]/20 border border-[#8E2DE2]/40">
+          {/* TAGS */}
+          <div className="flex gap-3 mb-6 text-xs flex-wrap">
+            <span className="px-3 py-1 bg-purple-500/20 rounded-full">
               {question.type?.toUpperCase()}
             </span>
 
-            <span className="px-3 py-1 rounded-full bg-[#E83464]/20 border border-[#E83464]/40">
-              {question.difficulty?.toUpperCase()}
+            <span className="px-3 py-1 bg-pink-500/20 rounded-full">
+              {question.difficulty}
             </span>
 
-            <span className="px-3 py-1 rounded-full bg-white/10 border border-white/20">
-              {question.topic || "General"}
+            <span className="px-3 py-1 bg-white/10 rounded-full">
+              {question.topic}
             </span>
           </div>
 
+          {/* HR LABEL */}
+          {question.type === "hr" && (
+            <div className="mb-4 text-pink-400 text-sm">
+              Behavioral Question (STAR recommended)
+            </div>
+          )}
+
           {/* QUESTION */}
-          <h2 className="text-2xl md:text-3xl font-semibold mb-6 leading-relaxed">
+          <h2 className="text-2xl mb-6 leading-relaxed">
             {question.question}
           </h2>
 
-          {/* TEXT */}
-          {question.type === "text" && (
-  <>
-    <textarea
-      className="w-full p-4 rounded-xl bg-black/40 border border-white/10 
-      focus:outline-none focus:ring-2 focus:ring-[#8E2DE2] transition"
-      rows={5}
-      placeholder="Type or speak your answer..."
-      value={answer}
-      onChange={(e) => setAnswer(e.target.value)}
-    />
+          {/* TEXT + HR */}
+          {(question.type === "text" || question.type === "hr") && (
+            <>
+              <textarea
+                className="w-full p-4 rounded-xl bg-black/40 border border-white/10 
+                focus:outline-none focus:ring-2 focus:ring-[#8E2DE2]"
+                rows={5}
+                placeholder="Write your answer..."
+                value={answer}
+                onChange={(e) => setAnswer(e.target.value)}
+              />
 
-    {/* 🔥 LIVE AI FEEDBACK */}
-    {liveScore !== null && (
-      <div className="mt-4 p-4 rounded-xl bg-white/5 border border-white/10">
-        
-        <div className="flex items-center justify-between mb-2">
-          <p className="text-sm text-gray-400">Live AI Score</p>
-          <span
-            className={`text-lg font-bold ${
-              liveScore >= 7
-                ? "text-green-400"
-                : liveScore >= 4
-                ? "text-yellow-400"
-                : "text-red-400"
-            }`}
-          >
-            {liveScore}/10
-          </span>
-        </div>
+              {/* LIVE SCORE */}
+              {liveScore !== null && (
+                <div className="mt-4 p-4 bg-white/5 rounded-xl border border-white/10">
+                  <div className="flex justify-between mb-2">
+                    <span className="text-gray-400">Live Score</span>
+                    <span
+                      className={`font-semibold ${
+                        liveScore >= 7
+                          ? "text-green-400"
+                          : liveScore >= 4
+                          ? "text-yellow-400"
+                          : "text-red-400"
+                      }`}
+                    >
+                      {liveScore}/10
+                    </span>
+                  </div>
 
-        <ul className="text-sm text-gray-300 space-y-1">
-          {liveFeedback.map((f, i) => (
-            <li key={i}>• {f}</li>
-          ))}
-        </ul>
-      </div>
-    )}
+                  <ul className="text-sm text-gray-300 space-y-1">
+                    {liveFeedback.map((f, i) => (
+                      <li key={i}>• {f}</li>
+                    ))}
+                  </ul>
+                </div>
+              )}
 
-    {/* VOICE */}
-    {voiceMode && (
-      <div className="mt-4 flex items-center gap-3">
-        <button
-          onClick={toggleMic}
-          className={`px-5 py-2 rounded-full font-semibold transition ${
-            listening
-              ? "bg-red-500 animate-pulse"
-              : "bg-gradient-to-r from-[#E83464] to-[#8E2DE2]"
-          }`}
-        >
-          {listening ? "🎙 Listening..." : "🎤 Speak"}
-        </button>
+              {/* VOICE */}
+              {voiceMode && (
+                <button
+                  onClick={toggleMic}
+                  className={`mt-4 px-4 py-2 rounded-full ${
+                    listening
+                      ? "bg-red-500 animate-pulse"
+                      : "bg-purple-600"
+                  }`}
+                >
+                  {listening ? "Listening..." : "Speak"}
+                </button>
+              )}
+            </>
+          )}
 
-        {answer && (
-          <span className="text-sm text-gray-400">
-            Voice input active
-          </span>
-        )}
-      </div>
-    )}
-  </>
-)}
           {/* MCQ */}
           {question.type === "mcq" && (
             <div className="space-y-3">
               {question.options.map((opt: string) => (
-                <label
-                  key={opt}
-                  className={`flex items-center gap-3 p-4 rounded-xl border cursor-pointer transition ${
-                    answer === opt
-                      ? "bg-gradient-to-r from-[#E83464]/20 to-[#8E2DE2]/20 border-[#8E2DE2]"
-                      : "bg-white/5 border-white/10 hover:bg-white/10"
-                  }`}
-                >
+                <label key={opt} className="flex gap-3 p-3 bg-white/5 rounded-xl">
                   <input
                     type="radio"
                     checked={answer === opt}
@@ -298,23 +273,16 @@ useEffect(() => {
           {question.type === "msq" && (
             <div className="space-y-3">
               {question.options.map((opt: string) => (
-                <label
-                  key={opt}
-                  className={`flex items-center gap-3 p-4 rounded-xl border cursor-pointer transition ${
-                    Array.isArray(answer) && answer.includes(opt)
-                      ? "bg-gradient-to-r from-[#E83464]/20 to-[#8E2DE2]/20 border-[#8E2DE2]"
-                      : "bg-white/5 border-white/10 hover:bg-white/10"
-                  }`}
-                >
+                <label key={opt} className="flex gap-3 p-3 bg-white/5 rounded-xl">
                   <input
                     type="checkbox"
-                    checked={Array.isArray(answer) && answer.includes(opt)}
+                    checked={answer?.includes(opt)}
                     onChange={(e) => {
                       if (e.target.checked) {
                         setAnswer((prev: any) => [...(prev || []), opt]);
                       } else {
                         setAnswer((prev: any) =>
-                          prev.filter((a: string) => a !== opt)
+                          prev.filter((x: string) => x !== opt)
                         );
                       }
                     }}
@@ -329,8 +297,8 @@ useEffect(() => {
           {question.type === "code" && (
             <textarea
               rows={8}
-              className="w-full p-4 rounded-xl bg-black/60 border border-white/10 font-mono text-sm"
-              placeholder="Write your code here..."
+              className="w-full p-4 rounded-xl bg-black/60 font-mono border border-white/10"
+              placeholder="Write your code..."
               value={answer}
               onChange={(e) => setAnswer(e.target.value)}
             />
@@ -340,8 +308,7 @@ useEffect(() => {
           <button
             onClick={handleSubmit}
             disabled={loading}
-            className="w-full mt-8 py-3 rounded-full font-semibold text-lg 
-            bg-gradient-to-r from-[#E83464] to-[#8E2DE2]"
+            className="w-full mt-8 py-3 rounded-full bg-gradient-to-r from-[#E83464] to-[#8E2DE2]"
           >
             {loading ? "Evaluating..." : "Submit Answer →"}
           </button>

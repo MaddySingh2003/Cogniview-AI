@@ -106,4 +106,50 @@ async function evaluateText(question, answer, modelAnswer) {
   }
 }
 
-module.exports = { evaluateText };
+function evaluateHR(answer) {
+  const feedback = [];
+  let score = 5;
+
+  const length = answer.trim().length;
+
+  // 🔥 Length check (confidence proxy)
+  if (length < 50) {
+    score -= 2;
+    feedback.push("Answer too short. Add more detail.");
+  } else if (length > 120) {
+    score += 1;
+    feedback.push("Good detailed response.");
+  }
+
+  // 🔥 STAR detection (basic NLP)
+  const lower = answer.toLowerCase();
+
+  const hasSituation = lower.includes("situation");
+  const hasTask = lower.includes("task");
+  const hasAction = lower.includes("i did") || lower.includes("i handled");
+  const hasResult = lower.includes("result") || lower.includes("outcome");
+
+  const starScore = [hasSituation, hasTask, hasAction, hasResult].filter(Boolean).length;
+
+  if (starScore >= 3) {
+    score += 3;
+    feedback.push("Good structured answer (STAR method detected).");
+  } else {
+    feedback.push("Try structuring answer using Situation, Task, Action, Result.");
+  }
+
+  // 🔥 clarity
+  if (answer.split(" ").length > 30) {
+    score += 1;
+    feedback.push("Good explanation clarity.");
+  }
+
+  score = Math.max(1, Math.min(10, score));
+
+  return {
+    score,
+    feedback
+  };
+}
+
+module.exports = { evaluateText,evaluateHR };

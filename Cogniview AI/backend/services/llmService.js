@@ -11,16 +11,16 @@ const GEMINI_MODELS = [
 
 const HF_MODEL = "HuggingFaceH4/zephyr-7b-beta";
 // ================= PROMPT =================
-function buildPrompt(role, level, resumeText = "", codingEnabled = false) {
+function buildPrompt(role, level, resumeText = "", codingEnabled = false, hrMode = false) {
   return `
 You are an AI interviewer.
 
 Generate EXACTLY 15 questions in STRICT JSON ARRAY.
 
-Each object MUST follow this schema:
+Each object MUST follow:
 
 {
-  "type": "text | mcq | msq | code",
+  "type": "text | mcq | msq ${codingEnabled ? "| code" : ""} ${hrMode ? "| hr" : ""}",
   "question": "string",
   "topic": "string",
   "difficulty": "${level}",
@@ -33,19 +33,20 @@ Each object MUST follow this schema:
   "expectedOutput": "string"
 }
 
-Rules:
-- ALWAYS include "topic"
-- For CODE questions ALWAYS include "expectedOutput"
-- Return ONLY JSON
-- No explanation
+STRICT RULES:
+
+${!codingEnabled ? "- DO NOT generate ANY 'code' questions" : "- Include EXACTLY 3 code questions"}
+${hrMode ? "- Include EXACTLY 5 HR questions (type='hr')" : "- DO NOT generate HR questions"}
+- Include at least 4 MCQ and 3 MSQ questions
+- Always include topic
+- Return ONLY JSON ARRAY
 - No markdown
+- No explanation
 
 Role: ${role}
 Level: ${level}
 
 ${resumeText ? `Resume:\n${resumeText}` : ""}
-
-${codingEnabled ? "Include EXACTLY 3 CODE questions." : ""}
 `;
 }
 
@@ -100,6 +101,27 @@ function normalize(qs, level, offset = 0) {
       extractExpectedOutputFromExample(q.example) ||
       ""
   }));
+}function normalize(qs, level, codingEnabled, hrMode) {
+  return qs
+    .filter(q => {
+      if (!codingEnabled && q.type === "code") return false;
+      if (!hrMode && q.type === "hr") return false;
+      return true;
+    })
+    .map((q, i) => ({
+      id: i + 1,
+      type: q.type || "text",
+      question: q.question,
+      modelAnswer: q.modelAnswer || "",
+      topic: q.topic || "General",
+      difficulty: level,
+      options: q.options || [],
+      correctAnswer: q.correctAnswer || null,
+      correctAnswers: q.correctAnswers || [],
+      constraints: q.constraints || "",
+      example: q.example || "",
+      expectedOutput: q.expectedOutput || ""
+    }));
 }
 
 // 🔥 helper
@@ -217,14 +239,14 @@ async function generateBlock(prompt, expectedCount) {
 }
 
 // ================= MAIN =================
-async function generateQuestions(role, level, resumeText = "", codingEnabled = false) {
+async function generateQuestions(role, level, resumeText = "", codingEnabled,hrMode) {
   try {
-    const prompt = buildPrompt(role, level, resumeText, codingEnabled);
+    const prompt = buildPrompt(role, level, resumeText, codingEnabled,hrMode);
 
     const qs = await generateBlock(prompt, 15);
 
     return {
-      questions: normalize(qs, level),
+     questions: normalize(qs, level, codingEnabled, hrMode),
       source: "llm"
     };
 

@@ -10,6 +10,7 @@ export default function Home() {
   const [loading, setLoading] = useState(false);
   const [resume, setResume] = useState<File | null>(null);
   const [codingEnabled, setCodingEnabled] = useState(false);
+  const [hrMode, setHrMode]=useState(false);
 
   const [voiceMode, setVoiceMode] = useState(
   localStorage.getItem("voiceMode") === "true"
@@ -29,6 +30,7 @@ const toggleVoice = () => {
     formData.append("role", role);
     formData.append("level", level);
     formData.append("codingEnabled", String(codingEnabled));
+      formData.append("hrMode", String(hrMode));
 
     if (resume) {
       formData.append("resume", resume);
@@ -168,6 +170,7 @@ const toggleVoice = () => {
           Customize spanyour interview experience
         </p>
       </div>
+      
 
       {/* Selects */}
       <div className="flex gap-4 mb-6">
@@ -198,6 +201,7 @@ const toggleVoice = () => {
           <option value="expert">Expert</option>
         </select>
       </div>
+      
 
       {/* File */}
       <input
@@ -220,7 +224,14 @@ const toggleVoice = () => {
               >
                 🎙 Voice: {voiceMode ? "ON" : "OFF"}
               </button>
-
+           <button
+  onClick={() => setHrMode(!hrMode)}
+  className={`flex-1 py-2 rounded-xl text-sm font-medium ${
+    hrMode ? "bg-green-500" : "bg-red-500"
+  }`}
+>
+  🧠 HR Mode: {hrMode ? "ON" : "OFF"}
+</button>
               {/* Coding */}
               <button
                 onClick={() => setCodingEnabled(!codingEnabled)}
