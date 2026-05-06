@@ -1,5 +1,5 @@
 const express = require("express");
-const cors = require("cors");
+
 require("dotenv").config();
 
 const connectDB = require("./config/db");
@@ -9,8 +9,15 @@ const interviewRoutes = require("./routes/interviewRoutes");
 connectDB();
 
 const app = express();
+const cors = require("cors");
 
-app.use(cors());
+app.use(cors({
+  origin: "http://localhost:5173",
+  methods: ["GET", "POST", "PUT", "DELETE"],
+  credentials: true
+}));
+
+
 app.use(express.json());
 
 app.use("/", interviewRoutes);

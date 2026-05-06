@@ -65,55 +65,183 @@ export default function Interview() {
     setLiveFeedback([]);
   }, [question]);
 
-  // ================= VOICE =================
-  const voiceMode =
-    state?.voiceEnabled ??
-    localStorage.getItem("voiceMode") === "true";
+// ================= VOICE =================
+// ================= VOICE =================
+const startListening = async () => {
+  try {
+    if (!recognitionRef.current) return;
 
-  useEffect(() => {
-    if (!voiceMode) return;
+    window.speechSynthesis.cancel();
 
-    const SpeechRecognition =
-      (window as any).SpeechRecognition ||
-      (window as any).webkitSpeechRecognition;
+    await navigator.mediaDevices.getUserMedia({
+      audio: true
+    });
 
-    if (!SpeechRecognition) {
-      console.warn("Speech recognition not supported");
+    recognitionRef.current.start();
+
+  } catch (err) {
+    console.error("START MIC ERROR:", err);
+  }
+};
+
+const stopListening = () => {
+  try {
+    recognitionRef.current?.stop();
+  } catch (err) {
+    console.error("STOP MIC ERROR:", err);
+  }
+};
+const voiceMode =
+  state?.voiceEnabled !== undefined
+    ? state.voiceEnabled
+    : localStorage.getItem("voiceMode") === "true";
+
+useEffect(() => {
+  if (!voiceMode) return;
+
+  const SpeechRecognition =
+    (window as any).webkitSpeechRecognition ||
+    (window as any).SpeechRecognition;
+
+  if (!SpeechRecognition) {
+    console.error("Speech recognition unsupported");
+    return;
+  }
+
+  const recognition = new SpeechRecognition();
+
+  recognition.lang = "en-US";
+
+  // 🔥 IMPORTANT
+  recognition.continuous = true;
+  recognition.interimResults = true;
+
+  recognition.onstart = () => {
+    console.log("🎤 Voice started");
+    setListening(true);
+  };
+
+  recognition.onresult = (event: any) => {
+    let finalTranscript = "";
+
+    for (let i = 0; i < event.results.length; i++) {
+      finalTranscript += event.results[i][0].transcript + " ";
+    }
+
+    console.log("VOICE:", finalTranscript);
+
+    setAnswer(finalTranscript);
+  };
+
+  recognition.onerror = (event: any) => {
+    console.error("VOICE ERROR:", event.error);
+
+    // 🔥 Ignore Chrome fake network bug
+    if (event.error === "network") {
       return;
     }
 
-    const recog = new SpeechRecognition();
-    recog.lang = "en-US";
-    recog.continuous = false;
-
-    recog.onstart = () => setListening(true);
-
-    recog.onresult = (e: any) => {
-      const transcript = e.results[0][0].transcript;
-      setAnswer((prev: string) =>
-        prev ? prev + " " + transcript : transcript
-      );
-    };
-
-    recog.onend = () => setListening(false);
-
-    recognitionRef.current = recog;
-
-    return () => recog.stop();
-  }, [voiceMode]);
-
-  const toggleMic = () => {
-    if (!recognitionRef.current) return;
-
-    try {
-      listening
-        ? recognitionRef.current.stop()
-        : recognitionRef.current.start();
-    } catch (err) {
-      console.warn("Mic error:", err);
-    }
+    setListening(false);
   };
 
+  recognition.onend = () => {
+    console.log("🎤 Voice ended");
+    setListening(false);
+  };
+
+  recognitionRef.current = recognition;
+
+  return () => {
+    recognition.stop();
+  };
+
+}, [voiceMode]);
+
+const toggleMic = async () => {
+  try {
+    if (!recognitionRef.current) return;
+
+    if (listening) {
+      recognitionRef.current.stop();
+      return;
+    }
+
+    // mic permission
+    await navigator.mediaDevices.getUserMedia({
+      audio: true
+    });
+    window.speechSynthesis.cancel(); 
+
+    // 🔥 IMPORTANT DELAY
+    setTimeout(() => {
+      recognitionRef.current.start();
+    }, 200);
+
+  } catch (err) {
+    console.error("MIC ERROR:", err);
+  }
+};
+// ================= AI SPEAK =================
+const speakQuestion = (text: string) => {
+  if (!voiceMode) return;
+
+  if (!window.speechSynthesis) {
+    console.warn("Speech synthesis unsupported");
+    return;
+  }
+
+  // stop previous speech
+  window.speechSynthesis.cancel();
+
+  const speak = () => {
+    const voices = window.speechSynthesis.getVoices();
+
+    const utterance = new SpeechSynthesisUtterance(text);
+
+    // better voice
+    utterance.voice =
+      voices.find((v) => v.lang.includes("en")) || null;
+
+    utterance.lang = "en-US";
+    utterance.rate = 0.95;
+    utterance.pitch = 1;
+    utterance.volume = 1;
+
+    utterance.onstart = () => {
+      console.log("🔊 AI speaking...");
+    };
+
+    utterance.onend = () => {
+      console.log("🔊 Speech finished");
+    };
+
+    utterance.onerror = (e) => {
+      console.error("Speech synthesis error:", e);
+    };
+
+    window.speechSynthesis.speak(utterance);
+  };
+
+  // Chrome loads voices async
+  if (window.speechSynthesis.getVoices().length === 0) {
+    window.speechSynthesis.onvoiceschanged = speak;
+  } else {
+    speak();
+  }
+};useEffect(() => {
+  if (!question?.question) return;
+
+  // wait slightly so browser allows audio
+  const timer = setTimeout(() => {
+    speakQuestion(question.question);
+  }, 400);
+
+  return () => {
+    clearTimeout(timer);
+    window.speechSynthesis.cancel();
+  };
+
+}, [question]);
   // ================= SUBMIT =================
   const handleSubmit = async () => {
     if (
@@ -240,15 +368,23 @@ export default function Interview() {
               {/* VOICE */}
               {voiceMode && (
                 <button
-                  onClick={toggleMic}
-                  className={`mt-4 px-4 py-2 rounded-full ${
-                    listening
-                      ? "bg-red-500 animate-pulse"
-                      : "bg-purple-600"
-                  }`}
-                >
-                  {listening ? "Listening..." : "Speak"}
-                </button>
+  onMouseDown={startListening}
+  onMouseUp={stopListening}
+  onMouseLeave={stopListening}
+
+  onTouchStart={startListening}
+  onTouchEnd={stopListening}
+
+  className={`mt-4 px-6 py-3 rounded-full font-semibold transition-all duration-200 ${
+    listening
+      ? "bg-red-500 scale-105 shadow-lg shadow-red-500/40"
+      : "bg-gradient-to-r from-[#E83464] to-[#8E2DE2]"
+  }`}
+>
+  {listening
+    ? "🎙 Release to Stop"
+    : "🎤 Hold to Speak"}
+</button>
               )}
             </>
           )}

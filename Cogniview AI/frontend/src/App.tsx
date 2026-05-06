@@ -1,4 +1,4 @@
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 
 import Home from "./pages/Home";
 import Interview from "./pages/Interview";
@@ -33,7 +33,7 @@ export default function App() {
 
         <Routes>
 
-          {/* ✅ HOME PAGE WITH ALL SECTIONS */}
+          {/* ================= HOME ================= */}
           <Route
             path="/"
             element={
@@ -47,14 +47,38 @@ export default function App() {
             }
           />
 
-          {/* OTHER ROUTES */}
+          {/* ================= AUTH ================= */}
           <Route path="/auth" element={<Auth />} />
+
+          {/* ✅ FIX FOR /login */}
+          <Route
+            path="/login"
+            element={<Navigate to="/auth" replace />}
+          />
+
+          {/* ================= INTERVIEW ================= */}
           <Route path="/interview" element={<Interview />} />
+
+          {/* ================= RESULT ================= */}
           <Route path="/result" element={<Result />} />
+
+          {/* ================= HISTORY ================= */}
           <Route path="/history" element={<History />} />
+
+          {/* ================= LEARN MORE ================= */}
           <Route path="/learn-more" element={<LearnMore />} />
+
+          {/* ================= PROFILE ================= */}
           <Route path="/profile" element={<Profile />} />
+
+          {/* ================= DASHBOARD ================= */}
           <Route path="/dashboard" element={<Dashboard />} />
+
+          {/* ✅ FALLBACK */}
+          <Route
+            path="*"
+            element={<Navigate to="/" replace />}
+          />
 
         </Routes>
 

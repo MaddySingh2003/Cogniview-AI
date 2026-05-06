@@ -4,40 +4,66 @@ const API = axios.create({
   baseURL: "http://localhost:3001"
 });
 
-// ✅ FIXED TOKEN HANDLING
+// ================= TOKEN =================
 API.interceptors.request.use((config) => {
   const token = localStorage.getItem("token");
 
   if (token) {
-    config.headers.Authorization = `Bearer ${token}`; // ⚠️ keep this (no Bearer)
+    config.headers.Authorization = `Bearer ${token}`;
   }
 
   return config;
 });
 
-export const startInterview = (data: any) => {
-  const isFormData = data instanceof FormData;
+// ================= AUTO LOGOUT =================
+API.interceptors.response.use(
+  (response) => response,
 
-  return API.post("/start", data, {
-    headers: isFormData
-      ? { "Content-Type": "multipart/form-data" }
-      : {}
+  (error) => {
+    if (error.response?.status === 401) {
+      console.warn("JWT expired or unauthorized");
+
+      localStorage.removeItem("token");
+
+      // prevent infinite reload loop
+      if (window.location.pathname !== "/login") {
+        window.location.href = "/login";
+      }
+    }
+
+    return Promise.reject(error);
+  }
+);
+
+// ================= START INTERVIEW =================
+export const startInterview = (formData: FormData) =>
+  API.post("/start", formData, {
+    headers: {
+      "Content-Type": "multipart/form-data"
+    }
   });
-};
+
+// ================= SUBMIT ANSWER =================
 export const submitAnswer = (data: any) =>
   API.post("/answer", data);
 
+// ================= RESULT =================
 export const getResult = (sessionId: string) =>
   API.get(`/result/${sessionId}`);
 
+// ================= AUTH =================
 export const login = (data: any) =>
   API.post("/auth/login", data);
 
 export const register = (data: any) =>
   API.post("/auth/register", data);
-export const getHistory=()=>
+
+// ================= HISTORY =================
+export const getHistory = () =>
   API.get("/history");
 
+// ================= LIVE EVALUATION =================
 export const liveEvaluate = (data: any) =>
   API.post("/live-eval", data);
+
 export default API;
