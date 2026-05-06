@@ -1,7 +1,7 @@
 import { useEffect, useRef } from "react";
 
 export default function Features() {
-  const refs = useRef([]);
+ const refs = useRef<HTMLDivElement[]>([]);
 
   useEffect(() => {
     const observer = new IntersectionObserver(
@@ -23,7 +23,7 @@ export default function Features() {
     return () => observer.disconnect();
   }, []);
 
-  const addRef = (el) => {
+  const addRef = (el: HTMLDivElement | null) => {
     if (el && !refs.current.includes(el)) {
       refs.current.push(el);
     }

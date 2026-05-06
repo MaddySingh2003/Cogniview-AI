@@ -3,7 +3,7 @@ import { getHistory } from "../api/api";
 import { useNavigate } from "react-router-dom";
 
 export default function History() {
-  const [data, setData] = useState([]);
+  const [data, setData] = useState<Session[]>([]);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -13,7 +13,15 @@ export default function History() {
         alert("Failed to load history");
       });
   }, []);
-
+  
+type Session = {
+  sessionId: string;
+  createdAt: string;
+  role: string;
+  level: string;
+  averageScore?: number;
+  verdict?: string;
+};
   return (
     <div className="min-h-screen  bg-black/40 border-white/10  text-white relative overflow-hidden">
 

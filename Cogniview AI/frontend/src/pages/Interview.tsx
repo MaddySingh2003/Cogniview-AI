@@ -157,30 +157,7 @@ useEffect(() => {
 
 }, [voiceMode]);
 
-const toggleMic = async () => {
-  try {
-    if (!recognitionRef.current) return;
 
-    if (listening) {
-      recognitionRef.current.stop();
-      return;
-    }
-
-    // mic permission
-    await navigator.mediaDevices.getUserMedia({
-      audio: true
-    });
-    window.speechSynthesis.cancel(); 
-
-    // 🔥 IMPORTANT DELAY
-    setTimeout(() => {
-      recognitionRef.current.start();
-    }, 200);
-
-  } catch (err) {
-    console.error("MIC ERROR:", err);
-  }
-};
 // ================= AI SPEAK =================
 const speakQuestion = (text: string) => {
   if (!voiceMode) return;
