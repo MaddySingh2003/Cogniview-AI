@@ -73,11 +73,14 @@ function generateFeedback({ answer, modelAnswer, score, semantic }) {
 
 async function evaluateText(question, answer, modelAnswer) {
   try {
-    const res = await axios.post("http://localhost:8000/predict", {
-      question,
-      answer,
-      model_answer: modelAnswer   // ✅ FIXED
-    });
+    const res = await axios.post(
+  `${process.env.ML_SERVICE_URL}/predict`,
+  {
+    question,
+    answer,
+    model_answer: modelAnswer
+  }
+);
 
     const data = res.data;
 
