@@ -133,19 +133,19 @@ Gemini AI + MongoDB Atlas
 
 ## 🏠 Landing Page
 
-![Landing Page](../screenshots/landing.png)
+![Landing Page](./Cogniview%20AI/screenshots/landing.png)
 
 ---
 
 ## 📊 Analytics Dashboard
 
-![Dashboard](./cogniviewAI/screenshots/dashboard.png)
+![Dashboard](./Cogniview%20AI/screenshots/dashboard.png)
 
 ---
 
 ## 👤 User Profile Overview
 
-![Profile](../screenshots/profile.png)
+![Profile](./Cogniview%20AI/screenshots/profile.png)
 
 ---
 # ⚙️ Local Setup
