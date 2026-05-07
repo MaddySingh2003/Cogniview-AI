@@ -61,3 +61,7 @@ def predict(data: AnswerRequest):
             "semantic_score": 0.5,
             "final_label": "fallback"
         }
+    
+@app.get("/health")
+def health():
+    return {"status": "ok"}
