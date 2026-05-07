@@ -133,22 +133,21 @@ Gemini AI + MongoDB Atlas
 
 ## 🏠 Landing Page
 
-![Landing Page](sandbox:/mnt/data/Screenshot%202026-05-07%20142234.png)
+![Landing Page](./screenshots/landing.png)
 
 ---
 
 ## 📊 Analytics Dashboard
 
-![Dashboard](sandbox:/mnt/data/Screenshot%202026-05-07%20142220.png)
+![Dashboard](./screenshots/dashboard.png)
 
 ---
 
 ## 👤 User Profile Overview
 
-![Profile](sandbox:/mnt/data/Screenshot%202026-05-07%20142256.png)
+![Profile](./screenshots/profile.png)
 
 ---
-
 # ⚙️ Local Setup
 
 ## 1. Clone Repository
