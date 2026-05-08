@@ -6,8 +6,27 @@ import { useNavigate } from "react-router-dom";
 export default function Profile() {
   const [history, setHistory] = useState<any[]>([]);
   const [user, setUser] = useState<any>(null);
+  const [editing, setEditing] = useState(false);
+
+const [editName, setEditName] = useState("");
 
   const navigate = useNavigate();
+  const handleSave = () => {
+
+  const updatedUser = {
+    ...user,
+    name: editName
+  };
+
+  setUser(updatedUser);
+
+  localStorage.setItem(
+    "user",
+    JSON.stringify(updatedUser)
+  );
+
+  setEditing(false);
+};
 
   // ================= LOAD USER =================
   useEffect(() => {
@@ -129,14 +148,60 @@ export default function Profile() {
                 Interviews Completed: {history.length}
               </p>
 
-              {/* EDIT BUTTON */}
-              <button
-                className="mt-6 px-5 py-2 rounded-full text-sm
-                bg-gradient-to-r from-[#E83464] to-[#8E2DE2]
-                hover:scale-105 transition"
-              >
-                Edit Profile
-              </button>
+              {/* EDIT MODE */}
+{editing ? (
+
+  <div className="mt-6 space-y-3">
+
+    <input
+      type="text"
+      value={editName}
+      onChange={(e) =>
+        setEditName(e.target.value)
+      }
+      className="w-full p-3 rounded-xl
+      bg-black/40 border border-white/10
+      focus:outline-none"
+      placeholder="Enter name"
+    />
+
+    <div className="flex gap-3">
+
+      <button
+        onClick={handleSave}
+        className="flex-1 py-2 rounded-full
+        bg-green-500 hover:scale-105 transition"
+      >
+        Save
+      </button>
+
+      <button
+        onClick={() => {
+          setEditing(false);
+          setEditName(userName);
+        }}
+        className="flex-1 py-2 rounded-full
+        bg-white/10 hover:bg-white/20 transition"
+      >
+        Cancel
+      </button>
+
+    </div>
+
+  </div>
+
+) : (
+
+  <button
+    onClick={() => setEditing(true)}
+    className="mt-6 px-5 py-2 rounded-full text-sm
+    bg-gradient-to-r from-[#E83464] to-[#8E2DE2]
+    hover:scale-105 transition"
+  >
+    Edit Profile
+  </button>
+
+)}
 
             </div>
 
