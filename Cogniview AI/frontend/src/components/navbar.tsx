@@ -141,6 +141,15 @@ export default function Navbar() {
               >
                 History
               </button>
+                <button
+                onClick={() => {
+                  navigate("/dashboard");
+                  setOpen(false);
+                }}
+                className="block w-full text-left text-lg text-white"
+              >
+                Dashboard
+              </button>
 
               <button
                 onClick={() => {
